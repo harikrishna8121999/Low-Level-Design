@@ -1,0 +1,1737 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parking Lot LLD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff; --bg-soft:#f7f8fa; --bg-card:#ffffff; --text:#1f2328; --muted:#5b6471; --border:#e4e7ec;
+  --accent:#5b5bd6; --accent-soft:#eef0ff; --accent-text:#4343b8;
+  --code-bg:#f6f8fa; --code-text:#24292f;
+  --ok:#1a7f37; --ok-soft:#e8f6ec; --bad:#cf222e; --bad-soft:#fdecee;
+  --warn:#9a6700; --warn-soft:#fff6dd; --info-soft:#eaf3ff; --info:#0b5cad;
+  --tok-kw:#cf222e; --tok-str:#0a3069; --tok-fn:#8250df; --tok-com:#6e7781; --tok-num:#0550ae; --tok-cls:#953800; --tok-ann:#116329;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --bg-soft:#151920; --bg-card:#171b22; --text:#e6e8eb; --muted:#9aa4b2; --border:#2a3039;
+    --accent:#8e8ff7; --accent-soft:#20223f; --accent-text:#b4b5ff;
+    --code-bg:#12161c; --code-text:#d6dbe1;
+    --ok:#4ac26b; --ok-soft:#12261a; --bad:#ff7b72; --bad-soft:#2d1517;
+    --warn:#e3b341; --warn-soft:#2a2210; --info-soft:#0f2136; --info:#79b8ff;
+    --tok-kw:#ff7b72; --tok-str:#a5d6ff; --tok-fn:#d2a8ff; --tok-com:#8b949e; --tok-num:#79c0ff; --tok-cls:#ffa657; --tok-ann:#7ee787;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --bg-soft:#151920; --bg-card:#171b22; --text:#e6e8eb; --muted:#9aa4b2; --border:#2a3039;
+  --accent:#8e8ff7; --accent-soft:#20223f; --accent-text:#b4b5ff;
+  --code-bg:#12161c; --code-text:#d6dbe1;
+  --ok:#4ac26b; --ok-soft:#12261a; --bad:#ff7b72; --bad-soft:#2d1517;
+  --warn:#e3b341; --warn-soft:#2a2210; --info-soft:#0f2136; --info:#79b8ff;
+  --tok-kw:#ff7b72; --tok-str:#a5d6ff; --tok-fn:#d2a8ff; --tok-com:#8b949e; --tok-num:#79c0ff; --tok-cls:#ffa657; --tok-ann:#7ee787;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.7 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--accent-text)}
+code,pre,.mono{font-family:"JetBrains Mono",Consolas,ui-monospace,monospace;font-variant-ligatures:none}
+:not(pre)>code{background:var(--code-bg);border:1px solid var(--border);padding:.08em .38em;border-radius:5px;font-size:.86em}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;height:56px;display:flex;align-items:center;gap:12px;padding:0 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.topbar .brand{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.topbar .crumb{color:var(--muted);font-size:14px}
+.topbar .sp{flex:1}
+.btn{font:inherit;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--bg-card);color:var(--text);padding:6px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--accent);color:var(--accent-text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.08);color:#fff}
+.progress{position:fixed;top:56px;left:0;height:2px;background:var(--accent);width:0;z-index:21}
+
+/* layout */
+.layout{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1440px;margin:0 auto}
+aside.toc{position:sticky;top:56px;height:calc(100vh - 56px);overflow:auto;padding:28px 12px 28px 20px;border-right:1px solid var(--border)}
+.toc h4{margin:0 0 10px 10px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.toc a{display:block;padding:6px 10px;border-radius:7px;font-size:14px;color:var(--muted);text-decoration:none;line-height:1.35}
+.toc a:hover{color:var(--text);background:var(--bg-soft)}
+.toc a.active{color:var(--accent-text);background:var(--accent-soft);font-weight:600}
+.toc .num{display:inline-block;width:22px;color:inherit;opacity:.7;font-variant-numeric:tabular-nums}
+main{padding:40px 48px 120px;min-width:0}
+main section{margin-bottom:64px}
+.prose{max-width:800px}
+h1{font-size:40px;line-height:1.15;letter-spacing:-.02em;margin:0 0 14px;font-weight:800}
+h2{font-size:28px;letter-spacing:-.01em;margin:0 0 16px;padding-top:8px;font-weight:750;line-height:1.25}
+h3{font-size:20px;margin:32px 0 10px;font-weight:700}
+h4{font-size:16px;margin:22px 0 6px}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 14px;padding-left:22px}
+li{margin:4px 0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 22px}
+.pill{font-size:12.5px;font-weight:600;border-radius:999px;padding:3px 10px;border:1px solid var(--border);background:var(--bg-soft);color:var(--muted)}
+.pill.easy{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.lead{font-size:18px;color:var(--muted)}
+.secnum{color:var(--accent);margin-right:8px}
+
+/* callouts */
+.callout{border:1px solid var(--border);border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:10px;padding:14px 16px;margin:18px 0}
+.callout.tip{border-left-color:var(--ok);background:var(--ok-soft)}
+.callout.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.callout.info{border-left-color:var(--info);background:var(--info-soft)}
+.callout b.t{display:block;margin-bottom:4px}
+.callout p:last-child,.callout ul:last-child{margin-bottom:0}
+
+/* chat Q&A */
+.chat{display:flex;flex-direction:column;gap:10px;margin:18px 0 22px}
+.msg{display:flex;gap:10px;align-items:flex-start;max-width:760px}
+.msg .av{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff}
+.msg.c .av{background:#5b5bd6}.msg.i .av{background:#e8590c}
+.msg .bub{border:1px solid var(--border);background:var(--bg-card);border-radius:12px;padding:9px 14px;box-shadow:var(--shadow)}
+.msg.i .bub{background:var(--bg-soft)}
+.msg .who{font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:1px}
+
+/* cards & grids */
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:16px 0}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0}
+.card{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--bg-card);box-shadow:var(--shadow)}
+.card h4{margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.card p{margin:0;color:var(--muted);font-size:14.5px}
+.card .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+.tag.used{background:var(--ok-soft);color:var(--ok)}
+.tag.could{background:var(--info-soft);color:var(--info)}
+.tag.avoid{background:var(--bad-soft);color:var(--bad)}
+
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin:14px 0 20px}
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;margin:14px 0 20px}
+.tablewrap table{margin:0}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--bg-soft);font-size:13px;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+
+/* nouns highlight */
+.noun{background:#fff1a8;color:#3d3200;border-radius:4px;padding:0 3px;font-weight:600}
+:root[data-theme="dark"] .noun{background:#4a3f0c;color:#ffe680}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .noun{background:#4a3f0c;color:#ffe680}}
+
+/* diagram frame */
+.figure{margin:20px 0 28px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--bg-card);box-shadow:var(--shadow)}
+.figure .fhead{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg-soft);flex-wrap:wrap}
+.figure .fhead b{font-size:14px}
+.figure .fhead .sp{flex:1}
+.figure .canvas{background:#fbfbfc;overflow:auto}
+.figure .canvas svg{display:block;width:100%;height:auto;min-width:860px;margin:0 auto}
+#flowSvg{max-width:900px}
+.figure:fullscreen{border-radius:0;display:flex;flex-direction:column}
+.figure:fullscreen .canvas{flex:1}
+.figure:fullscreen .canvas svg{height:100%;min-width:0}
+.figure .cap{padding:10px 14px;font-size:13.5px;color:var(--muted);border-top:1px solid var(--border)}
+
+/* code */
+.code{position:relative;margin:14px 0 20px;border:1px solid var(--border);border-radius:12px;background:var(--code-bg);overflow:hidden}
+.code .chead{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--border);font-size:12.5px;color:var(--muted);font-family:"JetBrains Mono",Consolas,monospace}
+.code .copy{font-size:12px;padding:3px 9px}
+pre{font-variant-ligatures:none;margin:0;padding:14px 16px;overflow:auto;font-size:13.3px;line-height:1.6;color:var(--code-text);tab-size:4}
+pre code{background:none;border:0;padding:0;font-size:inherit}
+.token.keyword,.token.boolean{color:var(--tok-kw)}
+.token.string,.token.char{color:var(--tok-str)}
+.token.function{color:var(--tok-fn)}
+.token.comment{color:var(--tok-com);font-style:italic}
+.token.number{color:var(--tok-num)}
+.token.class-name{color:var(--tok-cls)}
+.token.annotation,.token.punctuation.annotation{color:var(--tok-ann)}
+.token.operator{color:inherit}
+.why{font-size:14.5px;color:var(--muted);border-left:3px solid var(--border);padding:2px 0 2px 12px;margin:-6px 0 22px}
+
+/* serpentine mini grid */
+.serp{display:grid;grid-template-columns:repeat(4,44px);gap:4px;margin:10px 0}
+.serp div{height:44px;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:14px;background:var(--bg-soft);border:1px solid var(--border)}
+.serp div.r{background:var(--accent-soft);color:var(--accent-text)}
+.serpwrap{display:flex;gap:28px;align-items:center;flex-wrap:wrap;margin:10px 0 18px}
+
+/* simulator */
+.sim{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:22px;margin:16px 0 22px;align-items:start}
+.board{position:relative;aspect-ratio:1;width:100%;display:grid;grid-template-columns:repeat(10,1fr);border:2px solid var(--border);border-radius:12px;overflow:hidden;user-select:none}
+.board .cell{position:relative;font-size:10px;font-weight:600;color:#56606c;padding:2px 4px;border-right:1px solid rgba(0,0,0,.04);border-bottom:1px solid rgba(0,0,0,.04)}
+.board .cell.a{background:#f4f1ff}.board .cell.b{background:#ffffff}
+.board .cell.last{background:#fff4c2}
+.board .cell.flash{outline:3px solid #f59f00;outline-offset:-3px}
+.board svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.token-p{position:absolute;width:5.2%;aspect-ratio:1;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transform:translate(-50%,-50%);transition:left .45s ease,top .45s ease;z-index:3;display:grid;place-items:center;color:#fff;font-size:9px;font-weight:800}
+.simside{display:flex;flex-direction:column;gap:12px}
+.simctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.die{font-size:44px;line-height:1;width:58px;height:58px;display:grid;place-items:center;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)}
+.die.spin{animation:spin .35s ease}
+@keyframes spin{from{transform:rotate(-180deg) scale(.6)}to{transform:none}}
+.queue{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
+.queue .q{padding:3px 10px;border-radius:999px;color:#fff;font-weight:700;font-size:12px}
+.queue .q.front{outline:2px solid var(--text);outline-offset:1px}
+.log{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--bg-soft);font-size:13px}
+.log li{padding:7px 11px;border-bottom:1px solid var(--border);margin:0}
+.log li:first-child{background:var(--bg-card)}
+.log .call{font-family:"JetBrains Mono",Consolas,monospace;font-size:11.5px;color:var(--muted);display:block}
+select{font:inherit;font-size:13px;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text)}
+
+/* exercises */
+details{border:1px solid var(--border);border-radius:10px;margin:10px 0;background:var(--bg-card)}
+details>summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:14.5px;list-style:none;display:flex;gap:8px;align-items:center}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"▸";color:var(--accent);transition:transform .15s}
+details[open]>summary::before{transform:rotate(90deg)}
+details>.body{padding:0 14px 12px}
+.ex{border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin:16px 0;background:var(--bg-card);box-shadow:var(--shadow)}
+.ex h4{margin:0 0 6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lvl{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+.lvl.e{background:var(--ok-soft);color:var(--ok)}.lvl.m{background:var(--warn-soft);color:var(--warn)}.lvl.h{background:var(--bad-soft);color:var(--bad)}
+
+/* quiz */
+.quiz{counter-reset:q}
+.qbox{border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0;background:var(--bg-card)}
+.qbox .qq{font-weight:600;margin-bottom:8px}
+.qbox .opts{display:grid;gap:6px}
+.qbox button.opt{font:inherit;font-size:14.5px;text-align:left;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-soft);color:var(--text);cursor:pointer}
+.qbox button.opt:hover:not(:disabled){border-color:var(--accent)}
+.qbox button.opt.right{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:600}
+.qbox button.opt.wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.qbox .exp{display:none;margin-top:8px;font-size:14px;color:var(--muted)}
+.qbox.done .exp{display:block}
+.score{font-weight:700;color:var(--accent-text)}
+
+/* checklist */
+.check{list-style:none;padding:0}
+.check li{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--border)}
+.check input{margin-top:6px;accent-color:var(--accent);width:16px;height:16px}
+
+/* cheat sheet */
+.tldr{font-size:18px;line-height:1.6;border-radius:14px;padding:18px 22px;background:var(--accent-soft);border:1px solid var(--border);margin:6px 0 30px}
+.tldr-k{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-text);margin-bottom:4px}
+.tl{margin:0 0 10px}
+.tl-step{display:grid;grid-template-columns:40px minmax(0,1fr);gap:16px;position:relative;padding-bottom:26px}
+.tl-step::before{content:"";position:absolute;left:19px;top:42px;bottom:2px;width:2px;background:var(--border)}
+.tl-step:last-child::before{display:none}
+.tl-dot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#1f2328;border:2px solid}
+.tl-body{min-width:0}
+.tl-body h4{margin:7px 0 8px;font-size:17px}
+.say{margin:0;font-size:15.5px}
+.bucket{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 14px;font-size:15px}
+.bucket .bk{font-weight:700;color:var(--accent-text)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:14px;font-weight:600;padding:4px 12px;border-radius:999px;background:var(--bg-soft);border:1px solid var(--border)}
+.chip.hl{background:var(--accent-soft);color:var(--accent-text)}
+pre.tree{font-variant-ligatures:none;margin:0;padding:14px 16px;border-radius:12px;background:var(--code-bg);border:1px solid var(--border);font-size:13.5px;line-height:1.6;overflow:auto}
+.tree .tc{color:var(--tok-com)}
+#revSvg{min-width:0 !important}
+table.traps td:first-child{font-weight:600;width:45%}
+.term{display:block;font-size:12.5px;color:var(--muted)}
+.warm{list-style:none;counter-reset:w;padding:0;margin:8px 0 0}
+.warm li{counter-increment:w;display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;margin:0 0 8px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)}
+.warm li::before{content:counter(w);width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--accent-soft);color:var(--accent-text)}
+.warm li a{font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
+td b{white-space:nowrap}
+.pat{display:grid;gap:8px;margin:10px 0 20px;font-size:15px}
+.pat .tag{display:inline-block;width:64px;text-align:center;margin-right:10px;font-size:11px;font-weight:700;padding:2px 0;border-radius:999px;text-transform:uppercase}
+.fc-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.fc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fc{font:inherit;text-align:left;cursor:pointer;min-height:112px;padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;transition:border-color .15s}
+.fc:hover{border-color:var(--accent)}
+.fc .q{font-weight:600;font-size:15px}
+.fc .q::after{content:"tap to reveal";display:block;margin-top:6px;font-weight:500;font-size:12px;color:var(--muted)}
+.fc .a{display:none;font-size:14.5px;color:var(--text);border-top:1px dashed var(--border);padding-top:8px}
+.fc.open{border-color:var(--ok);background:var(--ok-soft)}
+.fc.open .q::after{display:none}
+.fc.open .a{display:block}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--border);padding-top:16px;margin-top:40px}
+
+/* code explorer */
+.ide{--i-bg:#1e1f22;--i-side:#191a1d;--i-bd:#2e3036;--i-tx:#d5d8dd;--i-mu:#868a91;--i-hl:#2b2d33;
+  display:grid;grid-template-columns:240px minmax(0,1fr);border:1px solid var(--i-bd);border-radius:14px;overflow:hidden;background:var(--i-bg);color:var(--i-tx);margin:18px 0 24px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.ide:fullscreen{border-radius:0;height:100vh}
+.ide-side{background:var(--i-side);border-right:1px solid var(--i-bd);padding:14px 10px;min-width:0}
+.ide-lang{border:1px solid var(--i-bd);border-radius:9px;padding:8px 12px;font-weight:700;font-size:14px;margin-bottom:14px}
+.ide-files{font-weight:700;font-size:14px;padding:4px 6px 10px;border-bottom:1px solid var(--i-bd);margin-bottom:8px}
+.ide-cnt{font-size:11px;background:var(--i-hl);border-radius:999px;padding:1px 8px;margin-left:4px;color:var(--i-mu)}
+.ide-tree{font-size:13.5px}
+.ide-row{display:flex;align-items:center;gap:6px;width:100%;font:inherit;font-size:13.5px;color:var(--i-tx);background:none;border:0;border-radius:7px;padding:5px 8px;cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ide-row:hover{background:var(--i-hl)}
+.ide-row.on{background:#1f3a2c;color:#5fd38d}
+.ide-row .car{display:inline-block;width:10px;color:var(--i-mu);transition:transform .15s}
+.ide-row.open .car{transform:rotate(90deg)}
+.ide-row .mb{margin-left:auto;font-size:10px;font-weight:800;color:#5fd38d;background:#1f3a2c;border:1px solid #2f5a42;border-radius:5px;padding:0 5px}
+.ide-kids{padding-left:14px}
+.ide-kids[hidden]{display:none}
+.ide-main{display:flex;flex-direction:column;min-width:0}
+.ide-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--i-bd)}
+.ide-head b{font-size:15px}
+.ide-fico{color:#5fd38d;font-family:"JetBrains Mono",Consolas,monospace;font-size:12px;font-weight:700}
+.ide-badge{font-size:10px;font-weight:800;color:#5fd38d;background:#1f3a2c;border:1px solid #2f5a42;border-radius:5px;padding:1px 6px}
+.ide-head .sp,.ide-foot .sp{flex:1}
+.ide-ib{background:none;border:1px solid transparent;color:var(--i-mu);font-size:16px;width:32px;height:30px;border-radius:7px;cursor:pointer}
+.ide-ib:hover{border-color:var(--i-bd);color:var(--i-tx)}
+.ide-tabs{display:flex;overflow-x:auto;background:var(--i-side);border-bottom:1px solid var(--i-bd);min-height:36px}
+.ide-tab{display:flex;align-items:center;gap:8px;font:inherit;font-size:13px;color:var(--i-mu);background:none;border:0;border-right:1px solid var(--i-bd);padding:8px 12px;cursor:pointer;white-space:nowrap}
+.ide-tab.on{color:var(--i-tx);background:var(--i-bg);box-shadow:inset 0 2px 0 #5fd38d}
+.ide-tab .x{opacity:.5;font-size:12px}.ide-tab .x:hover{opacity:1}
+.ide-code{display:flex;overflow:auto;height:480px;font-family:"JetBrains Mono",Consolas,monospace;font-size:13.5px;line-height:1.65;font-variant-ligatures:none}
+.ide:fullscreen .ide-code{height:auto;flex:1}
+.ide-gutter{position:sticky;left:0;flex:none;text-align:right;padding:12px 14px 12px 12px;color:#5c6068;background:var(--i-bg);border-right:1px solid var(--i-bd);user-select:none;white-space:pre}
+.ide-code pre{margin:0;padding:12px 18px;overflow:visible;color:var(--i-tx);font-size:inherit;line-height:inherit;flex:1}
+.ide .token.keyword,.ide .token.boolean{color:#cf8e6d}
+.ide .token.string{color:#6aab73}
+.ide .token.function{color:#56a8f5}
+.ide .token.comment{color:#7a7e85}
+.ide .token.number{color:#2aacb8}
+.ide .token.class-name{color:#d5d8dd}
+.ide .token.annotation,.ide .token.punctuation.annotation{color:#b3ae60}
+.ide .token.punctuation,.ide .token.operator{color:#bcbec4}
+.ide-foot{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--i-bd)}
+.ide-otab{font:inherit;font-size:13px;background:none;border:0;color:var(--i-mu);cursor:pointer;padding:4px 8px;border-radius:6px}
+.ide-otab.on{color:var(--i-tx);background:var(--i-hl)}
+.ide-run{font:inherit;font-size:14px;font-weight:700;background:#22a85a;color:#fff;border:0;border-radius:9px;padding:8px 18px;cursor:pointer}
+.ide-run:hover{background:#27bd66}
+.ide-out{border-top:1px solid var(--i-bd);background:#141517}
+.ide-out[hidden]{display:none}
+.ide-outnote{font-size:12px;color:var(--i-mu);padding:8px 14px;border-bottom:1px solid var(--i-bd)}
+.ide-outnote code{background:var(--i-hl);border-color:var(--i-bd);color:var(--i-tx)}
+.ide-out pre{margin:0;max-height:360px;overflow:auto;padding:12px 16px;font-size:12.5px;line-height:1.5;color:#c9ccd1;white-space:pre}
+@media (max-width:760px){
+  .ide{grid-template-columns:1fr}
+  .ide-side{border-right:0;border-bottom:1px solid var(--i-bd)}
+  .ide-tree{max-height:200px;overflow:auto}
+  .ide-code{height:380px}
+}
+.pill.med{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+/* parking simulator */
+.lotsim{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:22px;margin:16px 0 22px;align-items:start}
+.lotbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:13px;color:var(--muted)}
+.lotbar .sp{flex:1}
+.clock{font-weight:700;color:var(--text);font-size:15px;padding:4px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-card)}
+.floor{border:1px solid var(--border);border-radius:12px;padding:10px 12px 12px;margin-bottom:10px;background:var(--bg-soft)}
+.floor h5{margin:0 0 8px;font-size:13px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.spots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.spot{border:2px dashed var(--border);border-radius:10px;padding:6px 8px;min-height:104px;display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--bg-card);font-size:12px;text-align:center}
+.spot.occ{border-style:solid;border-color:var(--accent);background:var(--accent-soft)}
+.spot.flash{outline:3px solid #f59f00;outline-offset:1px}
+.spot .sid{font-weight:700;font-size:11px;color:var(--muted)}
+.spot .sv{font-size:24px;line-height:1.2}
+.spot .sp-plate{font-family:"JetBrains Mono",Consolas,monospace;font-size:10.5px;color:var(--muted)}
+.spot .exitb{font-size:11px;padding:2px 8px;margin-top:auto}
+.mobile-toc{display:none}
+@media (max-width:1000px){
+  .layout{grid-template-columns:1fr}
+  aside.toc{display:none}
+  main{padding:24px 16px 80px}
+  .mobile-toc{display:block;margin-bottom:20px}
+  .sim,.lotsim{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  h1{font-size:30px} h2{font-size:23px}
+  .grid2,.grid3,.fc-grid,.bucket{grid-template-columns:1fr}
+  .spots{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .warm li{grid-template-columns:34px minmax(0,1fr)}
+  .warm li a{grid-column:2}
+  .topbar .crumb{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">🅿️ LLD Notes</div>
+  <div class="crumb">/ Medium / Parking Lot</div>
+  <div class="sp"></div>
+  <button class="btn" id="themeBtn" type="button" aria-label="Toggle theme">◐ Theme</button>
+</div>
+<div class="progress" id="progress"></div>
+
+<div class="layout">
+<aside class="toc" id="toc">
+  <h4>On this page</h4>
+  <a href="#overview"><span class="num">0</span>The problem &amp; flow</a>
+  <a href="#warmup"><span class="num">▶</span>Try it first</a>
+  <a href="#requirements"><span class="num">1</span>Requirement gathering</a>
+  <a href="#entities"><span class="num">2</span>Core entities + breakdown</a>
+  <a href="#classes"><span class="num">3</span>Class diagram</a>
+  <a href="#flow"><span class="num">4</span>Park &amp; unpark flow</a>
+  <a href="#code"><span class="num">5</span>Working code</a>
+  <a href="#try"><span class="num">6</span>Run and Test</a>
+  <a href="#patterns"><span class="num">7</span>Design patterns</a>
+  <a href="#similar"><span class="num">8</span>Similar problems</a>
+  <a href="#recap"><span class="num">9</span>Revision cheat sheet</a>
+</aside>
+
+<main>
+<details class="mobile-toc"><summary>Contents</summary><div class="body" id="mtoc"></div></details>
+
+<!-- ============ 0. OVERVIEW ============ -->
+<section id="overview">
+<div class="prose">
+  <h1>Design a Parking Lot</h1>
+  <div class="meta">
+    <span class="pill med">Medium</span>
+    <span class="pill">Java</span>
+    <span class="pill">~30 min read</span>
+    <span class="pill">Code: <code>org.nailyourinterview.lld.parking_lot</code></span>
+  </div>
+  <p class="lead">A parking lot has floors. Each floor has spots for bikes, cars or trucks. A vehicle enters at an entry gate and gets a ticket. At the exit gate the driver pays a fee, and the spot becomes free again.</p>
+  <p>This is the most common LLD question. It tests three things: a clean <b>has-a</b> tree (lot → floor → spot), <b>Strategy</b> for pricing and payment, and <b>concurrency</b> — many gates must not give the same spot to two cars.</p>
+  <p>Every LLD answer follows the same 5 steps. Requirement gathering splits into 3 buckets: <b>extensibility</b>, <b>dynamic input</b> and <b>high traffic</b>. Click a step to jump to it.</p>
+</div>
+<div class="figure" id="figSteps">
+  <div class="fhead"><b>LLD interview flow — applied to Parking Lot</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figSteps">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="stepsSvg" data-name="lld-interview-flow.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="stepsSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-label="LLD interview flow"></svg></div>
+</div>
+</section>
+
+<!-- ============ WARM-UP ============ -->
+<section id="warmup">
+<div class="prose">
+  <h2><span class="secnum">▶</span>Try it first</h2>
+  <p>Before you read the solution, spend 10–15 minutes on your own. Use paper. A wrong first attempt is fine — it makes the answer stick when you read it.</p>
+  <h3>Step 0 · Run the lot</h3>
+  <p>Park a few vehicles. Move the clock forward. Then click <b>Exit</b> on a spot and watch the fee. Try <b>⚡ Race</b>: two bikes reach two gates at the same moment. The grey line under each log entry shows the method that does the work — ignore it for now.</p>
+</div>
+
+<div class="lotsim">
+  <div>
+    <div class="lotbar">
+      <span class="clock" id="clock"></span>
+      <button class="btn" type="button" id="t30">+30 min</button>
+      <button class="btn" type="button" id="t60">+1 h</button>
+      <span class="sp"></span>
+      <label>Pricing <select id="pricingSel"><option value="TIME_BASED">Time-based</option><option value="EVENT_BASED">Event-based</option></select></label>
+    </div>
+    <div id="floors"></div>
+  </div>
+  <div class="simside">
+    <div class="simctl">
+      <label style="font-size:13px;color:var(--muted)">Vehicle
+        <select id="vType"><option value="BIKE">🏍 Bike</option><option value="CAR" selected>🚗 Car</option><option value="TRUCK">🚚 Truck</option></select>
+      </label>
+      <button class="btn primary" type="button" id="parkBtn">Park at EG1</button>
+      <button class="btn" type="button" id="raceBtn">⚡ Race: 2 bikes</button>
+      <button class="btn" type="button" id="lotReset">↺ Reset</button>
+    </div>
+    <div class="simctl">
+      <label style="font-size:13px;color:var(--muted)">Pay at exit with
+        <select id="payMode"><option>UPI</option><option>CASH</option><option>CARD</option></select>
+      </label>
+      <span class="queue" id="lotStat"></span>
+    </div>
+    <ul class="log" id="log"></ul>
+  </div>
+</div>
+
+<div class="prose">
+  <h3>Now design it yourself</h3>
+  <ol class="warm">
+    <li><span><b>Questions.</b> Write 5 questions you would ask the interviewer.</span><a href="#requirements">compare → 1.1</a></li>
+    <li><span><b>Buckets.</b> Sort the answers into core, extensibility, dynamic input and high traffic.</span><a href="#requirements">compare → 1</a></li>
+    <li><span><b>Entities.</b> List the classes and one job for each.</span><a href="#entities">compare → 2</a></li>
+    <li><span><b>Class diagram.</b> Draw the boxes. Mark each line “has a”, “is a” or “uses”.</span><a href="#classes">compare → 3</a></li>
+    <li><span><b>Park + unpark.</b> Write both in pseudocode. Where can two gates clash?</span><a href="#flow">compare → 4</a></li>
+  </ol>
+</div>
+</section>
+
+<!-- ============ 1. REQUIREMENTS ============ -->
+<section id="requirements">
+<div class="prose">
+  <h2><span class="secnum">1</span>Requirement gathering</h2>
+  <p>Do not start with code. Ask questions first. Each answer removes a guess. Then sort the answers into 4 buckets: <b>core</b>, <b>extensibility</b>, <b>dynamic input</b> and <b>high traffic</b>.</p>
+
+  <h3>1.1 Ask questions</h3>
+  <div class="chat">
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Is it one building with many floors? What is on each floor?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>One lot, many floors. Each floor has spots. Each spot is for one vehicle type.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Which vehicles? Can a bike use a car spot?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Bike, car and truck. The spot type must match exactly. More types may come later.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>How do vehicles come in and go out? How many gates?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Through entry gates and exit gates. Many gates work at the same time.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Which spot does a vehicle get?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Any free spot of the right type. The first match is fine.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>How is the fee calculated?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Per hour, rounded up. The rate depends on the vehicle type. Peak hours cost more. On event days, use a flat higher rate. The admin can switch the pricing.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>How does the driver pay? Can they leave without paying?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Cash, UPI or card. The vehicle exits only after a successful payment.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Reservations, display boards, EV charging?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Out of scope. Keep the design open for them.</div></div>
+  </div>
+
+  <h3>1.2 Core functional requirements</h3>
+  <ul>
+    <li>A lot has floors. A floor has spots. Each spot allows one <code>VehicleType</code>: <code>BIKE</code>, <code>CAR</code> or <code>TRUCK</code>.</li>
+    <li><b>Park:</b> find a free spot of the same type, mark it occupied and issue a <code>Ticket</code> (id, entry time, vehicle, floor, spot).</li>
+    <li>If no spot is free, tell the driver.</li>
+    <li><b>Unpark:</b> take the ticket id, exit time and payment mode. Calculate the fee. Take the payment. Free the spot. Close the ticket.</li>
+    <li>If the payment fails, the vehicle cannot exit.</li>
+    <li>Pricing: <b>time-based</b> (peak / non-peak per hour) or <b>event-based</b> (flat high rate per hour). It can change at runtime.</li>
+    <li>Payment: cash, UPI or card.</li>
+  </ul>
+
+  <h3 id="extensibility">1.3 Extensibility (new features)</h3>
+  <p>Ask: <i>“Which features may come next?”</i> You do not build them now. You make sure each one is an <b>addition</b>, not a rewrite. For each feature, name the class that changes and the pattern that keeps the change small.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Follow-up question</th><th>What changes</th><th>Pattern / idea</th></tr></thead>
+    <tbody>
+      <tr><td>New vehicle type (EV, bus)</td><td>New <code>Vehicle</code> subclass, enum value, factory case, rates</td><td>Inheritance + Factory</td></tr>
+      <tr><td>New pricing (weekend, monthly pass)</td><td>New <code>PricingStrategy</code></td><td>Strategy (OCP)</td></tr>
+      <tr><td>New payment (wallet, FASTag)</td><td>New <code>PaymentStrategy</code> + factory case</td><td>Strategy + Factory</td></tr>
+      <tr><td>Spot choice: nearest to gate, lowest floor</td><td>New <code>SpotAllocationStrategy</code></td><td>Strategy (would add)</td></tr>
+      <tr><td>A bike may use a free car spot</td><td><code>spot.canFit(vehicle)</code> instead of <code>==</code></td><td>Polymorphism</td></tr>
+      <tr><td>Display board: free spots per floor</td><td>Spot fires an event on occupy / vacate</td><td>Observer</td></tr>
+      <tr><td>EV charging spots</td><td><code>ElectricSpot extends ParkingSpot</code></td><td>Inheritance</td></tr>
+      <tr><td>Many lots in a city</td><td>Remove the singleton. <code>LotManager</code> with <code>Map&lt;id, ParkingLot&gt;</code></td><td>Dependency injection</td></tr>
+      <tr><td>Reserve a spot in advance</td><td><code>Reservation</code> entity; spot state FREE → RESERVED → OCCUPIED</td><td>State</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>1.4 Dynamic (user input)</h3>
+  <p>Nothing about the layout is hard-coded in the lot. <code>Main</code> builds it at runtime and passes values in:</p>
+  <ul>
+    <li>Floors and spots: <code>lot.addFloor(floor)</code>, <code>floor.addSpot(new ParkingSpot(id, type))</code>.</li>
+    <li>Pricing from a string: <code>PricingStrategyType.valueOf("EVENT_BASED")</code> → factory → <code>lot.setPricingStrategy(...)</code>.</li>
+    <li>Payment mode at the exit gate: <code>unparkVehicle(ticketId, exitTime, PaymentMode.UPI)</code>.</li>
+    <li>Entry and exit times as text: <code>DateTimeParser.parse("21 May 7:30 AM 2025")</code>. Time is a parameter, not <code>now()</code>, so tests are easy.</li>
+  </ul>
+  <div class="callout warn"><b class="t">Validate the input</b>An unknown pricing name makes <code>valueOf</code> throw. A duplicate spot id silently replaces the old spot in the map. An exit time before the entry time throws in <code>TimeBasedPricing</code> but gives a negative fee in <code>EventBasedPricing</code> — check it once, in <code>ParkingLot</code>.</div>
+
+  <h3>1.5 High traffic (concurrency)</h3>
+  <p><b>Needed.</b> Many entry gates run at the same time. Two gates can see the same free spot. Without care, both cars get it.</p>
+  <ul>
+    <li><b>Spot booking (done in the code):</b> <code>ParkingSpot.occupied</code> is an <code>AtomicBoolean</code>. <code>tryOccupy()</code> calls <code>compareAndSet(false, true)</code>. Only one thread wins. The loser goes on to the next spot. No lock on the whole lot.</li>
+    <li><b>Ticket map (gap):</b> <code>activeTickets</code> is a plain <code>HashMap</code>, and many gates write to it. Use <code>ConcurrentHashMap</code>.</li>
+    <li><b>Double exit (gap):</b> one ticket at two exit gates → both read it, both charge. Fix: <code>activeTickets.remove(id)</code> first. Only one thread gets the ticket back.</li>
+    <li><b>Floors map:</b> filled once at start-up, then only read. Safe if setup ends before the gates open.</li>
+    <li><b>Singleton:</b> eager <code>static final INSTANCE</code> — thread-safe by the class loader.</li>
+  </ul>
+
+  <h3>1.6 Non-functional requirements</h3>
+  <ul>
+    <li><b>Correct under load</b> — never two vehicles in one spot.</li>
+    <li><b>Fast enough</b> — a linear scan over spots is fine for hundreds of spots. For thousands, keep a free-spot queue per type.</li>
+    <li><b>Extensible</b> — new vehicle, pricing or payment needs no edit to <code>ParkingLot</code>.</li>
+    <li><b>Testable</b> — times are passed in, so fees are predictable.</li>
+  </ul>
+  <div class="callout tip"><b class="t">Interview tip</b>Write the final requirements on the board, in these 4 buckets. Say “concurrency matters here” early. It is the part most candidates miss.</div>
+</div>
+</section>
+
+<!-- ============ 2. ENTITIES ============ -->
+<section id="entities">
+<div class="prose">
+  <h2><span class="secnum">2</span>Core entities + breakdown</h2>
+  <p>Read the requirements again. Underline the nouns. Most nouns become classes. Verbs become methods.</p>
+  <div class="callout">
+    A <span class="noun">parking lot</span> has <span class="noun">floors</span>. Each floor has <span class="noun">spots</span> for one <span class="noun">vehicle type</span>.
+    A <span class="noun">vehicle</span> <i>enters</i> at an <span class="noun">entry gate</span> and gets a <span class="noun">ticket</span>. At the <span class="noun">exit gate</span> the driver <i>pays</i> a <span class="noun">fee</span> by a <span class="noun">payment mode</span>. The fee comes from a <span class="noun">pricing</span> rule.
+  </div>
+  <p>“Fee” and “payment” are <b>behaviour that varies</b>, not data. So they become interfaces with many implementations: <b>PricingStrategy</b> and <b>PaymentStrategy</b>.</p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Entity</th><th>Type</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td><b>ParkingLot</b></td><td>Service / singleton</td><td>Holds floors, active tickets and the pricing strategy. Parks and unparks vehicles.</td></tr>
+      <tr><td><b>ParkingFloor</b></td><td>Model</td><td>Holds its spots by id. Finds and books a free spot of a type.</td></tr>
+      <tr><td><b>ParkingSpot</b></td><td>Model</td><td>One spot. Knows its allowed type. Books itself atomically (<code>tryOccupy</code>) and frees itself (<code>vacate</code>).</td></tr>
+      <tr><td><b>Vehicle</b> (abstract)</td><td>Model</td><td>Number plate and type.</td></tr>
+      <tr><td><b>Car</b> / <b>Bike</b> / <b>Truck</b></td><td>Model</td><td>Concrete vehicles. Each one fixes its own <code>VehicleType</code>.</td></tr>
+      <tr><td><b>Ticket</b></td><td>Model</td><td>Proof of entry: UUID, entry time, vehicle, floor id, spot id, payment status.</td></tr>
+      <tr><td><b>Gate</b> (abstract)</td><td>Model</td><td>Has an id and a type.</td></tr>
+      <tr><td><b>EntryGate</b> / <b>ExitGate</b></td><td>Model</td><td>Entry calls <code>parkVehicle</code>. Exit calls <code>unparkVehicle</code>.</td></tr>
+      <tr><td><b>PricingStrategy</b></td><td>Interface</td><td><code>calculateFee(type, entry, exit)</code>. <code>TimeBasedPricing</code>, <code>EventBasedPricing</code>.</td></tr>
+      <tr><td><b>PaymentStrategy</b></td><td>Interface</td><td><code>processPayment(ticket, amount)</code>. <code>CashPayment</code>, <code>UpiPayment</code>, <code>CardPayment</code>.</td></tr>
+      <tr><td><b>PaymentProcessor</b></td><td>Service</td><td>Runs one payment strategy. Sets the ticket’s payment status.</td></tr>
+      <tr><td><b>VehicleFactory</b>, <b>PricingStrategyFactory</b>, <b>PaymentStrategyFactory</b></td><td>Factory</td><td>Turn an enum value into the right object.</td></tr>
+      <tr><td><b>VehicleType</b>, <b>PaymentMode</b>, <b>PaymentStatus</b>, <b>PricingStrategyType</b>, <b>GateType</b></td><td>Enum</td><td>Fixed sets of values.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn"><b class="t">Common mistake</b>Do not write <code>if (type == CAR) rate = 30 else if …</code> and <code>if (mode == UPI) … else if …</code> inside <code>ParkingLot</code>. Every new rate or payment mode would edit the core class. Put each rule in its own strategy.</div>
+  <div class="callout warn"><b class="t">Second common mistake</b>Do not make <code>parkVehicle</code> <code>synchronized</code>. It is correct, but every gate waits for every other gate. Lock (or CAS) only the one spot.</div>
+</div>
+</section>
+
+<!-- ============ 3. CLASSES ============ -->
+<section id="classes">
+<div class="prose">
+  <h2><span class="secnum">3</span>Class diagram</h2>
+  <p>Read it from the centre: <b>ParkingLot</b> has many <b>ParkingFloors</b>, a floor has many <b>ParkingSpots</b>. The gates on the left use the lot. The strategies on the right plug in pricing and payment.</p>
+</div>
+
+<div class="figure" id="figClass">
+  <div class="fhead"><b>Class diagram</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figClass">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="classSvg" data-name="parking-lot-class-diagram.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="classSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1420 1320" role="img" aria-label="Class diagram of Parking Lot"></svg></div>
+  <div class="cap">Read each line as a sentence: “ParkingLot <b>has many</b> ParkingFloors”, “Car <b>is a</b> Vehicle”, “EntryGate <b>uses</b> ParkingLot”. Enums are grouped in one box to keep the picture small.</div>
+</div>
+
+<div class="prose">
+  <h3>Relationships, one by one</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>From → To</th><th>Relationship</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>ParkingLot → ParkingFloor</td><td><b>has many</b> <span class="term">aggregation</span></td><td><code>Main</code> creates the floors and calls <code>addFloor</code>. (Composition is also fine to say, if the lot builds its own floors.)</td></tr>
+      <tr><td>ParkingFloor → ParkingSpot</td><td><b>has many</b> <span class="term">aggregation</span></td><td>Spots are created outside and added with <code>addSpot</code>. Stored in a <code>Map&lt;id, spot&gt;</code>.</td></tr>
+      <tr><td>ParkingLot → Ticket</td><td><b>has many</b> <span class="term">composition</span></td><td>The lot creates each ticket and keeps the active ones in <code>activeTickets</code>.</td></tr>
+      <tr><td>ParkingLot → PricingStrategy</td><td><b>has a</b> <span class="term">aggregation</span></td><td>Set from outside through <code>setPricingStrategy</code>. Swappable at runtime.</td></tr>
+      <tr><td>Ticket → Vehicle</td><td><b>has a</b> <span class="term">aggregation</span></td><td>The vehicle exists before the ticket and after it.</td></tr>
+      <tr><td>PaymentProcessor → PaymentStrategy</td><td><b>has a</b> <span class="term">aggregation</span></td><td>Injected through the constructor.</td></tr>
+      <tr><td>EntryGate, ExitGate → Gate</td><td><b>is a</b> <span class="term">inheritance</span></td><td>Both are gates with an id and a type.</td></tr>
+      <tr><td>Car, Bike, Truck → Vehicle</td><td><b>is a</b> <span class="term">inheritance</span></td><td>Each sets its own <code>VehicleType</code>.</td></tr>
+      <tr><td>Time/EventBasedPricing → PricingStrategy<br>Cash/Upi/CardPayment → PaymentStrategy</td><td><b>is a</b> <span class="term">realization</span></td><td>They implement the interface.</td></tr>
+      <tr><td>EntryGate, ExitGate → ParkingLot</td><td><b>uses</b> <span class="term">dependency</span></td><td>They call <code>ParkingLot.getInstance()</code>. No field.</td></tr>
+      <tr><td>ParkingLot → PaymentProcessor</td><td><b>creates</b> <span class="term">dependency</span></td><td>A new processor per exit, with the strategy for the chosen mode.</td></tr>
+      <tr><td>ParkingLot → factories</td><td><b>uses</b> <span class="term">dependency</span></td><td>Pricing factory in the constructor, payment factory on each exit.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout info"><b class="t">Why the ticket holds ids, not objects</b><code>Ticket</code> stores <code>floorId</code> and <code>spotId</code> as strings. At exit the lot looks them up: <code>floors.get(floorId).getSpots().get(spotId)</code>. A ticket of plain values is easy to print, store in a DB or send over the network. The cost is one map lookup.</div>
+</div>
+</section>
+
+<!-- ============ 4. FLOW ============ -->
+<section id="flow">
+<div class="prose">
+  <h2><span class="secnum">4</span>How park and unpark flow</h2>
+  <p>The class diagram shows <i>structure</i>. This flow shows <i>behaviour</i>: what happens inside <code>ParkingLot.parkVehicle()</code> and <code>ParkingLot.unparkVehicle()</code>.</p>
+</div>
+<div class="figure" id="figFlow">
+  <div class="fhead"><b>Park and unpark flowchart</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figFlow">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="flowSvg" data-name="parking-lot-flow.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="flowSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 960" role="img" aria-label="Flowchart of park and unpark"></svg></div>
+  <div class="cap">Park books the spot <b>first</b> (CAS) and then writes the ticket. Unpark takes the money <b>first</b> and then frees the spot. A failed payment leaves the spot and the ticket as they were.</div>
+</div>
+</section>
+
+<!-- ============ 5. CODE ============ -->
+<section id="code">
+<div class="prose">
+  <h2><span class="secnum">5</span>Working code</h2>
+  <p>Build bottom-up: enums and vehicles, then spot and floor, then the strategies, then <code>ParkingLot</code> and the gates. The code uses Lombok (<code>@Getter</code>, <code>@Builder</code>, <code>@RequiredArgsConstructor</code>) to remove boilerplate.</p>
+
+  <h3>5.1 Enums</h3>
+<div class="code"><div class="chead"><span>enums/*.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public enum VehicleType { CAR, BIKE, TRUCK }
+public enum PaymentMode { CASH, UPI, CARD }
+public enum PaymentStatus { PENDING, SUCCESS, FAILED }
+public enum PricingStrategyType { TIME_BASED, EVENT_BASED }
+public enum GateType { ENTRY, EXIT }</code></pre></div>
+
+  <h3>5.2 Vehicle, Car, Bike, Truck, VehicleFactory</h3>
+<div class="code"><div class="chead"><span>model/Vehicle.java · model/Car.java · factory/VehicleFactory.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@Getter
+@RequiredArgsConstructor
+public abstract class Vehicle {
+    private final String number;
+    private final VehicleType type;
+}
+
+public class Car extends Vehicle {
+    public Car(String number) { super(number, VehicleType.CAR); }
+}
+// Bike and Truck look the same, with BIKE and TRUCK
+
+public class VehicleFactory {
+    public static Vehicle create(String number, VehicleType type) {
+        return switch (type) {
+            case CAR -&gt; new Car(number);
+            case BIKE -&gt; new Bike(number);
+            case TRUCK -&gt; new Truck(number);
+        };
+    }
+}</code></pre></div>
+  <p class="why">Each subclass fixes its type in the constructor. The caller cannot build a <code>Car</code> with type <code>TRUCK</code>.</p>
+
+  <h3>5.3 ParkingSpot — the concurrency core</h3>
+<div class="code"><div class="chead"><span>model/ParkingSpot.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@Getter
+@Setter
+@RequiredArgsConstructor
+public class ParkingSpot {
+    private final String id;
+    private final VehicleType allowedType;
+
+    private AtomicBoolean occupied = new AtomicBoolean(false);
+
+    public boolean tryOccupy() {
+        return occupied.compareAndSet(false, true);   // only one thread wins
+    }
+
+    public void vacate() {
+        occupied.set(false);
+    }
+
+    public boolean isOccupied() {
+        return occupied.get();
+    }
+}</code></pre></div>
+  <p class="why"><b>Key idea.</b> “Is it free?” and “take it” happen in <b>one atomic step</b>. With a plain <code>boolean</code>, two threads can both read <code>false</code>, then both write <code>true</code>. That is a check-then-act race. CAS removes it without a lock.</p>
+
+  <h3>5.4 ParkingFloor</h3>
+<div class="code"><div class="chead"><span>model/ParkingFloor.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@Getter
+public class ParkingFloor {
+    private final String id;
+    private final Map&lt;String, ParkingSpot&gt; spots = new HashMap&lt;&gt;();
+
+    public ParkingFloor(String id) { this.id = id; }
+
+    public void addSpot(ParkingSpot spot) {
+        spots.put(spot.getId(), spot);
+    }
+
+    public ParkingSpot findAvailableSpot(VehicleType vehicleType) {
+        for (ParkingSpot spot : spots.values()) {
+            if (spot.getAllowedType() == vehicleType &amp;&amp; spot.tryOccupy()) {
+                return spot;              // already booked for the caller
+            }
+        }
+        return null;
+    }
+}</code></pre></div>
+  <p class="why">The name says “find”, but the method also <b>books</b> the spot. That is on purpose: find and book must be one step. A better name is <code>reserveSpot</code>.</p>
+
+  <h3>5.5 Ticket</h3>
+<div class="code"><div class="chead"><span>model/Ticket.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@Data
+@Builder
+public class Ticket {
+    private String ticketId;
+    private LocalDateTime entryTime;
+    private Vehicle vehicle;
+    private String floorId;
+    private String spotId;
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;   // ⚠ ignored by @Builder
+}</code></pre></div>
+  <p class="why"><b>Bug.</b> <code>@Builder</code> ignores field initialisers. Tickets built with <code>Ticket.builder()</code> have <code>paymentStatus = null</code>, not <code>PENDING</code>. <code>javac</code> prints a Lombok warning. Fix: add <code>@Builder.Default</code> on the field.</p>
+
+  <h3>5.6 Pricing strategies</h3>
+<div class="code"><div class="chead"><span>strategy/pricing/*.java · factory/PricingStrategyFactory.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public interface PricingStrategy {
+    double calculateFee(VehicleType type, LocalDateTime entryTime, LocalDateTime exitTime);
+}
+
+public class TimeBasedPricing implements PricingStrategy {
+    private static final LocalTime PEAK_START = LocalTime.of(8, 0);
+    private static final LocalTime PEAK_END = LocalTime.of(17, 0);
+
+    private boolean isPeak(LocalTime time) {
+        return !time.isBefore(PEAK_START) &amp;&amp; !time.isAfter(PEAK_END);   // ⚠ 17:00 slot counts as peak
+    }
+
+    @Override
+    public double calculateFee(VehicleType type, LocalDateTime entryTime, LocalDateTime exitTime) {
+        if (exitTime.isBefore(entryTime)) throw new IllegalArgumentException("Exit time before entry time");
+
+        long durationMinutes = Duration.between(entryTime, exitTime).toMinutes();
+        long totalHours = (long) Math.ceil(durationMinutes / 60.0);    // round up
+
+        int peakHours = 0, nonPeakHours = 0;
+        LocalDateTime cursor = entryTime.truncatedTo(ChronoUnit.HOURS);
+        for (int i = 0; i &lt; totalHours; i++) {                          // classify hour by hour
+            if (isPeak(cursor.toLocalTime())) peakHours++; else nonPeakHours++;
+            cursor = cursor.plusHours(1);
+        }
+
+        double peakRate    = switch (type) { case CAR -&gt; 30.0; case BIKE -&gt; 15.0; case TRUCK -&gt; 50.0; };
+        double nonPeakRate = switch (type) { case CAR -&gt; 20.0; case BIKE -&gt; 10.0; case TRUCK -&gt; 30.0; };
+        return peakHours * peakRate + nonPeakHours * nonPeakRate;
+    }
+}
+
+public class EventBasedPricing implements PricingStrategy {
+    private static final Map&lt;VehicleType, Double&gt; EVENT_HOURLY_RATES = Map.of(
+            VehicleType.CAR, 50.0, VehicleType.BIKE, 30.0, VehicleType.TRUCK, 70.0);
+
+    @Override
+    public double calculateFee(VehicleType type, LocalDateTime entryTime, LocalDateTime exitTime) {
+        long durationMinutes = Duration.between(entryTime, exitTime).toMinutes();
+        long hours = (long) Math.ceil(durationMinutes / 60.0);
+        return EVENT_HOURLY_RATES.getOrDefault(type, 0.0) * hours;
+    }
+}
+
+public class PricingStrategyFactory {
+    public static PricingStrategy get(PricingStrategyType type) {
+        return switch (type) {
+            case TIME_BASED -&gt; new TimeBasedPricing();
+            case EVENT_BASED -&gt; new EventBasedPricing();
+        };
+    }
+}</code></pre></div>
+  <p class="why">Example: a car in at 7:30, out at 13:15 = 345 min → 6 hours. Slots start at 7, 8, 9, 10, 11, 12. One non-peak + five peak = 20 + 5 × 30 = <b>₹170</b>. Event-based: 6 × 50 = <b>₹300</b>.</p>
+
+  <h3>5.7 Payment strategies and PaymentProcessor</h3>
+<div class="code"><div class="chead"><span>strategy/payment/*.java · factory/PaymentStrategyFactory.java · service/PaymentProcessor.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public interface PaymentStrategy {
+    boolean processPayment(Ticket ticket, double amount);
+}
+
+public class UpiPayment implements PaymentStrategy {
+    @Override
+    public boolean processPayment(Ticket ticket, double amount) {
+        System.out.println("Paid ₹" + amount + " for ticket " + ticket.getTicketId() + " via UPI.");
+        return true;
+    }
+}
+// CashPayment and CardPayment look the same
+
+public class PaymentStrategyFactory {
+    public static PaymentStrategy get(PaymentMode mode) {
+        return switch (mode) {
+            case CASH -&gt; new CashPayment();
+            case UPI -&gt; new UpiPayment();
+            case CARD -&gt; new CardPayment();
+        };
+    }
+}
+
+public class PaymentProcessor {
+    private final PaymentStrategy strategy;
+
+    public PaymentProcessor(PaymentStrategy strategy) { this.strategy = strategy; }
+
+    public boolean pay(Ticket ticket, double amount) {
+        boolean success = strategy.processPayment(ticket, amount);
+        ticket.setPaymentStatus(success ? PaymentStatus.SUCCESS : PaymentStatus.FAILED);
+        if (!success) System.out.println("Payment failed for ticket: " + ticket.getTicketId());
+        return success;
+    }
+}</code></pre></div>
+  <p class="why"><code>PaymentProcessor</code> is the Strategy <i>context</i>. It holds the shared steps (set status, log failure). Each strategy holds only the part that differs.</p>
+
+  <h3>5.8 Gate, EntryGate, ExitGate</h3>
+<div class="code"><div class="chead"><span>model/Gate.java · model/EntryGate.java · model/ExitGate.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@Getter
+@AllArgsConstructor
+public abstract class Gate {
+    protected final String id;
+    public abstract GateType getType();
+}
+
+public class EntryGate extends Gate {
+    public EntryGate(String id) { super(id); }
+
+    @Override
+    public GateType getType() { return GateType.ENTRY; }
+
+    public Ticket parkVehicle(Vehicle vehicle, LocalDateTime entryTime) {
+        return ParkingLot.getInstance().parkVehicle(vehicle, entryTime);
+    }
+}
+
+public class ExitGate extends Gate {
+    public ExitGate(String id) { super(id); }
+
+    @Override
+    public GateType getType() { return GateType.EXIT; }
+
+    public void unparkVehicle(String ticketId, LocalDateTime exitTime, PaymentMode paymentMode) {
+        ParkingLot.getInstance().unparkVehicle(ticketId, exitTime, paymentMode);
+    }
+}</code></pre></div>
+  <p class="why">Gates are thin. They only forward to the lot. In a real system each gate runs on its own thread or machine — that is why the lot must be thread-safe.</p>
+
+  <h3>5.9 ParkingLot — the orchestrator</h3>
+<div class="code"><div class="chead"><span>service/ParkingLot.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@Getter
+public class ParkingLot {
+    private static final ParkingLot INSTANCE = new ParkingLot();     // eager singleton
+
+    private final Map&lt;String, ParkingFloor&gt; floors = new HashMap&lt;&gt;();
+    private final Map&lt;String, Ticket&gt; activeTickets = new HashMap&lt;&gt;();  // ⚠ use ConcurrentHashMap
+    @Setter
+    private PricingStrategy pricingStrategy;
+
+    private ParkingLot() {
+        this.pricingStrategy = PricingStrategyFactory.get(PricingStrategyType.TIME_BASED);
+    }
+
+    public static ParkingLot getInstance() { return INSTANCE; }
+
+    public void addFloor(ParkingFloor floor) { floors.put(floor.getId(), floor); }
+
+    public Ticket parkVehicle(Vehicle vehicle, LocalDateTime entryTime) {
+        for (ParkingFloor floor : floors.values()) {
+            ParkingSpot spot = floor.findAvailableSpot(vehicle.getType());
+            if (spot != null) {                                    // spot is already ours (CAS)
+                String ticketId = UUID.randomUUID().toString();
+                Ticket ticket = Ticket.builder()
+                        .ticketId(ticketId).entryTime(entryTime).vehicle(vehicle)
+                        .floorId(floor.getId()).spotId(spot.getId())
+                        .build();
+                activeTickets.put(ticketId, ticket);
+                System.out.println("Vehicle parked. Ticket: " + ticketId);
+                return ticket;
+            }
+        }
+        System.out.println("No spot available for vehicle type: " + vehicle.getType());
+        return null;
+    }
+
+    public void unparkVehicle(String ticketId, LocalDateTime exitTime, PaymentMode paymentMode) {
+        Ticket ticket = activeTickets.get(ticketId);              // ⚠ two exits can both get it
+        if (ticket == null) {
+            System.out.println("Invalid ticket ID.");
+            return;
+        }
+
+        double fee = pricingStrategy.calculateFee(ticket.getVehicle().getType(), ticket.getEntryTime(), exitTime);
+
+        PaymentProcessor processor = new PaymentProcessor(PaymentStrategyFactory.get(paymentMode));
+        if (!processor.pay(ticket, fee)) {
+            System.out.println("Vehicle cannot exit. Payment unsuccessful.");
+            return;
+        }
+
+        ParkingSpot spot = floors.get(ticket.getFloorId()).getSpots().get(ticket.getSpotId());
+        spot.vacate();
+        activeTickets.remove(ticketId);
+        System.out.println("Vehicle exited. Fee charged: ₹" + fee);
+    }
+
+    public void printStatus() { /* prints each floor and each spot: Occupied / Free */ }
+}</code></pre></div>
+  <p class="why">Order matters. Park: book the spot, <i>then</i> write the ticket — no ticket ever points at a spot someone else holds. Unpark: take the money, <i>then</i> free the spot — a failed payment changes nothing.</p>
+
+  <h3>5.10 Main — the client</h3>
+<div class="code"><div class="chead"><span>Main.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">ParkingLot lot = ParkingLot.getInstance();
+EntryGate entryGate = new EntryGate("EG1");
+lot.setPricingStrategy(PricingStrategyFactory.get(PricingStrategyType.valueOf("EVENT_BASED")));
+
+ParkingFloor floor1 = new ParkingFloor("Floor1");
+floor1.addSpot(new ParkingSpot("F1S1", VehicleType.BIKE));   // the only bike spot
+floor1.addSpot(new ParkingSpot("F1S2", VehicleType.CAR));
+floor1.addSpot(new ParkingSpot("F1S3", VehicleType.TRUCK));
+floor1.addSpot(new ParkingSpot("F1S4", VehicleType.CAR));
+lot.addFloor(floor1);
+
+Vehicle bike1 = VehicleFactory.create("KA01AB1234", VehicleType.BIKE);
+Vehicle bike2 = VehicleFactory.create("KA01AB5678", VehicleType.BIKE);
+LocalDateTime entryTime = DateTimeParser.parse("21 May 7:30 AM 2025");
+
+// two bikes race for one bike spot: exactly one gets a ticket
+new Thread(() -&gt; entryGate.parkVehicle(bike1, entryTime)).start();
+new Thread(() -&gt; entryGate.parkVehicle(bike2, entryTime)).start();</code></pre></div>
+</div>
+</section>
+
+<!-- ============ 6. RUN AND TEST ============ -->
+<section id="try">
+<div class="prose">
+  <h2><span class="secnum">6</span>Run and Test</h2>
+  <p>The full <code>parking_lot</code> package from the repo, file by file. Click a file to open it. Start with <b>Main.java</b>, then follow the calls: <code>EntryGate</code> → <code>ParkingLot</code> → <code>ParkingFloor</code> → <code>ParkingSpot</code>.
+  <a href="https://github.com/harikrishna8121999/Low-Level-Design/tree/main/src/main/java/org/nailyourinterview/lld/parking_lot" target="_blank" rel="noopener">Open on GitHub ↗</a></p>
+</div>
+
+<div class="ide" id="ide">
+  <aside class="ide-side">
+    <div class="ide-lang">☕ Java</div>
+    <div class="ide-files">📁 Files <span class="ide-cnt" id="ideCnt"></span></div>
+    <div class="ide-tree" id="ideTree"></div>
+  </aside>
+  <div class="ide-main">
+    <div class="ide-head">
+      <span class="ide-fico">{ }</span><b id="ideTitle"></b><span class="ide-badge" id="ideBadge">MAIN</span>
+      <span class="sp"></span>
+      <button class="ide-ib" type="button" id="ideCopy" title="Copy file">⧉</button>
+      <button class="ide-ib" type="button" id="ideFs" title="Full screen">⤢</button>
+    </div>
+    <div class="ide-tabs" id="ideTabs"></div>
+    <div class="ide-code" id="ideScroll"><div class="ide-gutter" id="ideGutter"></div><pre><code class="language-java" id="ideCode"></code></pre></div>
+    <div class="ide-foot">
+      <button class="ide-otab" type="button" id="ideOutTab">Output</button>
+      <span class="sp"></span>
+      <button class="ide-run" type="button" id="ideRun">▶ Run</button>
+    </div>
+    <div class="ide-out" id="ideOut" hidden>
+      <div class="ide-outnote">Recorded run of <code>Main</code> on JDK 21 (a browser cannot run Java). Two threads race for the only bike spot: one gets a ticket, the other gets “No spot”. The ticket id is a random UUID.</div>
+      <pre id="ideOutPre"></pre>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="repoFiles">{"files": [{"path": "enums/GateType.java", "code": "package org.nailyourinterview.lld.parking_lot.enums;\n\npublic enum GateType {\n    ENTRY,\n    EXIT\n}"}, {"path": "enums/PaymentMode.java", "code": "package org.nailyourinterview.lld.parking_lot.enums;\n\npublic enum PaymentMode {\n    CASH, UPI, CARD\n}\n"}, {"path": "enums/PaymentStatus.java", "code": "package org.nailyourinterview.lld.parking_lot.enums;\n\npublic enum PaymentStatus {\n    PENDING,\n    SUCCESS,\n    FAILED\n}"}, {"path": "enums/PricingStrategyType.java", "code": "package org.nailyourinterview.lld.parking_lot.enums;\n\npublic enum PricingStrategyType {\n    TIME_BASED, EVENT_BASED\n}\n"}, {"path": "enums/VehicleType.java", "code": "package org.nailyourinterview.lld.parking_lot.enums;\n\npublic enum VehicleType {\n    CAR, BIKE, TRUCK\n}\n"}, {"path": "factory/PaymentStrategyFactory.java", "code": "package org.nailyourinterview.lld.parking_lot.factory;\n\nimport org.nailyourinterview.lld.parking_lot.enums.PaymentMode;\nimport org.nailyourinterview.lld.parking_lot.strategy.payment.*;\n\npublic class PaymentStrategyFactory {\n    public static PaymentStrategy get(PaymentMode mode) {\n        return switch (mode) {\n            case CASH -> new CashPayment();\n            case UPI -> new UpiPayment();\n            case CARD -> new CardPayment();\n        };\n    }\n}"}, {"path": "factory/PricingStrategyFactory.java", "code": "package org.nailyourinterview.lld.parking_lot.factory;\n\nimport org.nailyourinterview.lld.parking_lot.enums.PricingStrategyType;\nimport org.nailyourinterview.lld.parking_lot.strategy.pricing.*;\n\npublic class PricingStrategyFactory {\n    public static PricingStrategy get(PricingStrategyType type) {\n        return switch (type) {\n            case TIME_BASED -> new TimeBasedPricing();\n            case EVENT_BASED -> new EventBasedPricing();\n        };\n    }\n}\n\n"}, {"path": "factory/VehicleFactory.java", "code": "package org.nailyourinterview.lld.parking_lot.factory;\n\nimport org.nailyourinterview.lld.parking_lot.enums.VehicleType;\nimport org.nailyourinterview.lld.parking_lot.model.*;\n\npublic class VehicleFactory {\n    public static Vehicle create(String number, VehicleType type) {\n        return switch (type) {\n            case CAR -> new Car(number);\n            case BIKE -> new Bike(number);\n            case TRUCK -> new Truck(number);\n        };\n    }\n}\n\n"}, {"path": "model/Bike.java", "code": "package org.nailyourinterview.lld.parking_lot.model;\n\nimport org.nailyourinterview.lld.parking_lot.enums.VehicleType;\n\npublic class Bike extends Vehicle {\n    public Bike(String number) { super(number, VehicleType.BIKE); }\n}\n\n"}, {"path": "model/Car.java", "code": "package org.nailyourinterview.lld.parking_lot.model;\n\nimport org.nailyourinterview.lld.parking_lot.enums.VehicleType;\n\npublic class Car extends Vehicle {\n    public Car(String number) { super(number, VehicleType.CAR); }\n}\n"}, {"path": "model/EntryGate.java", "code": "package org.nailyourinterview.lld.parking_lot.model;\n\nimport org.nailyourinterview.lld.parking_lot.enums.GateType;\nimport org.nailyourinterview.lld.parking_lot.service.ParkingLot;\nimport java.time.LocalDateTime;\n\n\npublic class EntryGate extends Gate {\n\n    public EntryGate(String id) {\n        super(id);\n    }\n\n    @Override\n    public GateType getType() {\n        return GateType.ENTRY;\n    }\n\n    public Ticket parkVehicle(Vehicle vehicle, LocalDateTime entryTime) {\n        return ParkingLot.getInstance().parkVehicle(vehicle, entryTime);\n    }\n}"}, {"path": "model/ExitGate.java", "code": "package org.nailyourinterview.lld.parking_lot.model;\n\nimport org.nailyourinterview.lld.parking_lot.enums.GateType;\nimport org.nailyourinterview.lld.parking_lot.enums.PaymentMode;\nimport org.nailyourinterview.lld.parking_lot.service.ParkingLot;\n\nimport java.time.LocalDateTime;\n\npublic class ExitGate extends Gate {\n\n    public ExitGate(String id) {\n        super(id);\n    }\n\n    @Override\n    public GateType getType() {\n        return GateType.EXIT;\n    }\n\n    public void unparkVehicle(String ticketId, LocalDateTime exitTime, PaymentMode paymentMode) {\n        ParkingLot.getInstance().unparkVehicle(ticketId, exitTime, paymentMode);\n    }\n}\n"}, {"path": "model/Gate.java", "code": "package org.nailyourinterview.lld.parking_lot.model;\n\nimport lombok.AllArgsConstructor;\nimport lombok.Getter;\nimport org.nailyourinterview.lld.parking_lot.enums.GateType;\n\n@Getter\n@AllArgsConstructor\npublic abstract class Gate {\n    protected final String id;\n\n    public abstract GateType getType();\n}\n"}, {"path": "model/ParkingFloor.java", "code": "package org.nailyourinterview.lld.parking_lot.model;\n\nimport lombok.Getter;\nimport org.nailyourinterview.lld.parking_lot.enums.VehicleType;\n\nimport java.util.HashMap;\nimport java.util.Map;\n\n@Getter\npublic class ParkingFloor {\n    private final String id;\n    private final Map<String, ParkingSpot> spots = new HashMap<>();\n\n    public ParkingFloor(String id) { this.id = id; }\n\n    public void addSpot(ParkingSpot spot) {\n        spots.put(spot.getId(), spot);\n    }\n\n    public ParkingSpot findAvailableSpot(VehicleType vehicleType) {\n        for (ParkingSpot spot : spots.values()) {\n            if (spot.getAllowedType() == vehicleType && spot.tryOccupy()) {\n                return spot;\n            }\n        }\n        return null;\n    }\n}"}, {"path": "model/ParkingSpot.java", "code": "package org.nailyourinterview.lld.parking_lot.model;\n\nimport lombok.Getter;\nimport lombok.RequiredArgsConstructor;\nimport lombok.Setter;\nimport org.nailyourinterview.lld.parking_lot.enums.VehicleType;\n\nimport java.util.concurrent.atomic.AtomicBoolean;\n\n@Getter\n@Setter\n@RequiredArgsConstructor\npublic class ParkingSpot {\n    private final String id;\n    private final VehicleType allowedType;\n\n    private AtomicBoolean occupied = new AtomicBoolean(false);\n\n    // t1 t2\n    // false false\n    // _     true\n    // false\n\n\n    public boolean tryOccupy() {\n        return occupied.compareAndSet(false, true);\n    }\n\n    public void vacate() {\n        occupied.set(false);\n    }\n\n    public boolean isOccupied() {\n        return occupied.get();\n    }\n}\n"}, {"path": "model/Ticket.java", "code": "package org.nailyourinterview.lld.parking_lot.model;\n\nimport lombok.Builder;\nimport lombok.Data;\nimport org.nailyourinterview.lld.parking_lot.enums.PaymentStatus;\n\nimport java.time.LocalDateTime;\n\n@Data\n@Builder\npublic class Ticket {\n    private String ticketId;\n    private LocalDateTime entryTime;\n    private Vehicle vehicle;\n    private String floorId;\n    private String spotId;\n    private PaymentStatus paymentStatus = PaymentStatus.PENDING;\n}"}, {"path": "model/Truck.java", "code": "package org.nailyourinterview.lld.parking_lot.model;\n\nimport org.nailyourinterview.lld.parking_lot.enums.VehicleType;\n\npublic class Truck extends Vehicle {\n    public Truck(String number) { super(number, VehicleType.TRUCK); }\n}\n"}, {"path": "model/Vehicle.java", "code": "package org.nailyourinterview.lld.parking_lot.model;\n\nimport lombok.Getter;\nimport lombok.RequiredArgsConstructor;\nimport org.nailyourinterview.lld.parking_lot.enums.VehicleType;\n\n@Getter\n@RequiredArgsConstructor\npublic abstract class Vehicle {\n    private final String number;\n    private final VehicleType type;\n}\n"}, {"path": "service/ParkingLot.java", "code": "package org.nailyourinterview.lld.parking_lot.service;\n\nimport lombok.Getter;\nimport lombok.Setter;\nimport org.nailyourinterview.lld.parking_lot.enums.PaymentMode;\nimport org.nailyourinterview.lld.parking_lot.enums.*;\nimport org.nailyourinterview.lld.parking_lot.factory.*;\nimport org.nailyourinterview.lld.parking_lot.model.*;\nimport org.nailyourinterview.lld.parking_lot.strategy.payment.*;\nimport org.nailyourinterview.lld.parking_lot.strategy.pricing.*;\n\nimport java.time.LocalDateTime;\nimport java.util.HashMap;\nimport java.util.Map;\nimport java.util.UUID;\n\n@Getter\npublic class ParkingLot {\n    private static final ParkingLot INSTANCE = new ParkingLot();\n\n    private final Map<String, ParkingFloor> floors = new HashMap<>();\n    private final Map<String, Ticket> activeTickets = new HashMap<>();\n    @Setter\n    private PricingStrategy pricingStrategy;\n\n    private ParkingLot() {\n        this.pricingStrategy = PricingStrategyFactory.get(PricingStrategyType.TIME_BASED);\n    }\n\n    public static ParkingLot getInstance() {\n        return INSTANCE;\n    }\n\n    public void addFloor(ParkingFloor floor) {\n        floors.put(floor.getId(), floor);\n    }\n\n    // b1, b2 (one spot)\n    // car, bike\n\n    public Ticket parkVehicle(Vehicle vehicle, LocalDateTime entryTime) {\n        for (ParkingFloor floor : floors.values()) {\n            ParkingSpot spot = floor.findAvailableSpot(vehicle.getType());\n\n            if (spot != null) {\n                // Successfully reserved the spot via atomic operation\n                String ticketId = UUID.randomUUID().toString();\n                Ticket ticket = Ticket.builder()\n                        .ticketId(ticketId)\n                        .entryTime(entryTime)\n                        .vehicle(vehicle)\n                        .floorId(floor.getId())\n                        .spotId(spot.getId())\n                        .build();\n\n                activeTickets.put(ticketId, ticket);\n                System.out.println(\"Vehicle parked. Ticket: \" + ticketId);\n                return ticket;\n            }\n        }\n\n        System.out.println(\"No spot available for vehicle type: \" + vehicle.getType());\n        return null;\n    }\n\n    public void unparkVehicle(String ticketId, LocalDateTime exitTime, PaymentMode paymentMode) {\n        Ticket ticket = activeTickets.get(ticketId);\n        if (ticket == null) {\n            System.out.println(\"Invalid ticket ID.\");\n            return;\n        }\n\n        double fee = pricingStrategy.calculateFee(\n                ticket.getVehicle().getType(),\n                ticket.getEntryTime(),\n                exitTime\n        );\n\n        PaymentStrategy strategy = PaymentStrategyFactory.get(paymentMode);\n        PaymentProcessor processor = new PaymentProcessor(strategy);\n        boolean paid = processor.pay(ticket, fee);\n\n        if (!paid) {\n            System.out.println(\"Vehicle cannot exit. Payment unsuccessful.\");\n            return;\n        }\n\n        ParkingSpot spot = floors.get(ticket.getFloorId()).getSpots().get(ticket.getSpotId());\n        spot.vacate();\n        activeTickets.remove(ticketId);\n\n        System.out.println(\"Vehicle exited. Fee charged: ₹\" + fee);\n    }\n\n    public void printStatus() {\n        floors.forEach((floorId, floor) -> {\n            System.out.println(\"Floor: \" + floorId);\n            floor.getSpots().values().forEach(spot -> {\n                System.out.println(\" Spot \" + spot.getId() + \" [\" + spot.getAllowedType() + \"] - \" + (spot.isOccupied() ? \"Occupied\" : \"Free\"));\n            });\n        });\n    }\n}"}, {"path": "service/PaymentProcessor.java", "code": "package org.nailyourinterview.lld.parking_lot.service;\n\nimport org.nailyourinterview.lld.parking_lot.enums.PaymentStatus;\nimport org.nailyourinterview.lld.parking_lot.model.Ticket;\nimport org.nailyourinterview.lld.parking_lot.strategy.payment.PaymentStrategy;\n\npublic class PaymentProcessor {\n    private final PaymentStrategy strategy;\n\n    public PaymentProcessor(PaymentStrategy strategy) {\n        this.strategy = strategy;\n    }\n\n    public boolean pay(Ticket ticket, double amount) {\n        boolean success = strategy.processPayment(ticket, amount);\n        if (success) {\n            ticket.setPaymentStatus(PaymentStatus.SUCCESS);\n        } else {\n            ticket.setPaymentStatus(PaymentStatus.FAILED);\n            System.out.println(\"Payment failed for ticket: \" + ticket.getTicketId());\n        }\n        return success;\n    }\n}"}, {"path": "strategy/payment/CardPayment.java", "code": "package org.nailyourinterview.lld.parking_lot.strategy.payment;\n\nimport org.nailyourinterview.lld.parking_lot.model.Ticket;\n\npublic class CardPayment implements PaymentStrategy {\n    @Override\n    public boolean processPayment(Ticket ticket, double amount) {\n        System.out.println(\"Paid ₹\" + amount + \" for ticket \" + ticket.getTicketId() + \" via Card.\");\n        return true;\n    }\n}"}, {"path": "strategy/payment/CashPayment.java", "code": "package org.nailyourinterview.lld.parking_lot.strategy.payment;\n\nimport org.nailyourinterview.lld.parking_lot.model.Ticket;\n\npublic class CashPayment implements PaymentStrategy {\n    @Override\n    public boolean processPayment(Ticket ticket, double amount) {\n        System.out.println(\"Paid ₹\" + amount + \" for ticket \" + ticket.getTicketId() + \" via Cash.\");\n        return true;\n    }\n}"}, {"path": "strategy/payment/PaymentStrategy.java", "code": "package org.nailyourinterview.lld.parking_lot.strategy.payment;\n\nimport org.nailyourinterview.lld.parking_lot.model.Ticket;\n\npublic interface PaymentStrategy {\n    boolean processPayment(Ticket ticket, double amount);\n}"}, {"path": "strategy/payment/UpiPayment.java", "code": "package org.nailyourinterview.lld.parking_lot.strategy.payment;\n\nimport org.nailyourinterview.lld.parking_lot.model.Ticket;\n\npublic class UpiPayment implements PaymentStrategy {\n    @Override\n    public boolean processPayment(Ticket ticket, double amount) {\n        System.out.println(\"Paid ₹\" + amount + \" for ticket \" + ticket.getTicketId() + \" via UPI.\");\n        return true;\n    }\n}"}, {"path": "strategy/pricing/EventBasedPricing.java", "code": "package org.nailyourinterview.lld.parking_lot.strategy.pricing;\n\nimport org.nailyourinterview.lld.parking_lot.enums.VehicleType;\n\nimport java.time.Duration;\nimport java.time.LocalDateTime;\nimport java.util.Map;\n\npublic class EventBasedPricing implements PricingStrategy {\n    // Event pricing: Higher per-hour rates\n    private static final Map<VehicleType, Double> EVENT_HOURLY_RATES = Map.of(\n            VehicleType.CAR, 50.0,\n            VehicleType.BIKE, 30.0,\n            VehicleType.TRUCK, 70.0\n    );\n\n    @Override\n    public double calculateFee(VehicleType type, LocalDateTime entryTime, LocalDateTime exitTime) {\n        long durationMinutes = Duration.between(entryTime, exitTime).toMinutes();\n        long hours = (long) Math.ceil(durationMinutes / 60.0); // always round up to next hour\n\n        double ratePerHour = EVENT_HOURLY_RATES.getOrDefault(type, 0.0);\n        return ratePerHour * hours;\n    }\n}"}, {"path": "strategy/pricing/PricingStrategy.java", "code": "package org.nailyourinterview.lld.parking_lot.strategy.pricing;\n\nimport org.nailyourinterview.lld.parking_lot.enums.VehicleType;\n\nimport java.time.LocalDateTime;\n\npublic interface PricingStrategy {\n    double calculateFee(VehicleType type, LocalDateTime entryTime, LocalDateTime exitTime);\n}"}, {"path": "strategy/pricing/TimeBasedPricing.java", "code": "package org.nailyourinterview.lld.parking_lot.strategy.pricing;\n\nimport org.nailyourinterview.lld.parking_lot.enums.VehicleType;\n\nimport java.time.Duration;\nimport java.time.LocalDateTime;\nimport java.time.LocalTime;\nimport java.time.temporal.ChronoUnit;\n\npublic class TimeBasedPricing implements PricingStrategy {\n    // Peak period hours (e.g., 8:00 to 17:00)\n    private static final LocalTime PEAK_START = LocalTime.of(8, 0);\n    private static final LocalTime PEAK_END = LocalTime.of(17, 0);\n\n    private boolean isPeak(LocalTime time) {\n        return !time.isBefore(PEAK_START) && !time.isAfter(PEAK_END);\n    }\n\n    @Override\n    public double calculateFee(VehicleType type, LocalDateTime entryTime, LocalDateTime exitTime) {\n        if (exitTime.isBefore(entryTime)) throw new IllegalArgumentException(\"Exit time before entry time\");\n\n        long durationMinutes = Duration.between(entryTime, exitTime).toMinutes();\n        long totalHours = (long) Math.ceil(durationMinutes / 60.0);\n\n        // Count peak hours and non-peak hours by iterating hour by hour\n        int peakHours = 0;\n        int nonPeakHours = 0;\n\n        LocalDateTime cursor = entryTime.truncatedTo(ChronoUnit.HOURS);\n        // If entry time has minutes, consider first hour partially occupied, count as 1 hour anyway (already rounded)\n        for (int i = 0; i < totalHours; i++) {\n            LocalTime hourStart = cursor.toLocalTime();\n            if (isPeak(hourStart)) peakHours++;\n            else nonPeakHours++;\n            cursor = cursor.plusHours(1);\n        }\n\n        double peakRate = switch (type) {\n            case CAR -> 30.0;\n            case BIKE -> 15.0;\n            case TRUCK -> 50.0;\n        };\n\n        double nonPeakRate = switch (type) {\n            case CAR -> 20.0;\n            case BIKE -> 10.0;\n            case TRUCK -> 30.0;\n        };\n\n        return peakHours * peakRate + nonPeakHours * nonPeakRate;\n    }\n}"}, {"path": "utils/DateTimeParser.java", "code": "package org.nailyourinterview.lld.parking_lot.utils;\n\nimport java.time.LocalDateTime;\nimport java.time.format.DateTimeFormatter;\nimport java.util.Locale;\n\npublic class DateTimeParser {\n    public static LocalDateTime parse(String input) {\n        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(\"d MMM h:mm a yyyy\", Locale.ENGLISH);\n        return LocalDateTime.parse(input, formatter);\n    }\n}\n"}, {"path": "Main.java", "code": "package org.nailyourinterview.lld.parking_lot;\n\nimport org.nailyourinterview.lld.parking_lot.enums.*;\nimport org.nailyourinterview.lld.parking_lot.factory.*;\nimport org.nailyourinterview.lld.parking_lot.model.*;\nimport org.nailyourinterview.lld.parking_lot.service.*;\nimport org.nailyourinterview.lld.parking_lot.utils.DateTimeParser;\n\nimport java.time.LocalDateTime;\nimport java.time.temporal.ChronoUnit;\n\npublic class Main {\n    public static void main(String[] args) {\n        ParkingLot lot = ParkingLot.getInstance();\n        EntryGate entryGate = new EntryGate(\"EG1\");\n        ExitGate exitGate = new ExitGate(\"XG1\");\n\n        lot.setPricingStrategy(PricingStrategyFactory.get(PricingStrategyType.valueOf(\"EVENT_BASED\")));\n\n        ParkingFloor floor1 = new ParkingFloor(\"Floor1\");\n        floor1.addSpot(new ParkingSpot(\"F1S1\", VehicleType.BIKE));\n        floor1.addSpot(new ParkingSpot(\"F1S2\", VehicleType.CAR));\n        floor1.addSpot(new ParkingSpot(\"F1S3\", VehicleType.TRUCK));\n        floor1.addSpot(new ParkingSpot(\"F1S4\", VehicleType.CAR));\n        lot.addFloor(floor1);\n\n        System.out.println(\"--------------------------\");\n\n        Vehicle bike1 = VehicleFactory.create(\"KA01AB1234\", VehicleType.BIKE);\n        Vehicle bike2 = VehicleFactory.create(\"KA01AB5678\", VehicleType.BIKE);\n        LocalDateTime entryTime = DateTimeParser.parse(\"21 May 7:30 AM 2025\");\n        System.out.println(entryTime.truncatedTo(ChronoUnit.HOURS));\n\n        Thread t1 = new Thread(() -> entryGate.parkVehicle(bike1, entryTime));\n        Thread t2 = new Thread(() -> entryGate.parkVehicle(bike2, entryTime));\n\n        t1.start();\n        t2.start();\n\n//        Vehicle car = VehicleFactory.create(\"KA01AB1234\", VehicleType.SEDAN);\n//\n//        LocalDateTime entryTime = DateTimeParser.parse(\"21 May 7:30 AM 2025\");\n//        Ticket ticket = entryGate.parkVehicle(car, entryTime);\n//\n//        System.out.println(\"--------------------------\");\n//\n//        lot.printStatus();\n//\n//        System.out.println(\"--------------------------\");\n//\n//        LocalDateTime exitTime = DateTimeParser.parse(\"21 May 1:15 PM 2025\");\n//        exitGate.unparkVehicle(ticket.getTicketId(), exitTime, PaymentMode.UPI);\n//\n//        System.out.println(\"--------------------------\");\n//\n//        lot.printStatus();\n    }\n}\n\n/*\n\n */\n"}], "output": "--------------------------\n2025-05-21T07:00\nNo spot available for vehicle type: BIKE\nVehicle parked. Ticket: c23a251f-8e4d-4471-bb22-91013f486e68\n", "main": "Main.java"}</script>
+</section>
+
+<!-- ============ 8. PATTERNS ============ -->
+<section id="patterns">
+<div class="prose">
+  <h2><span class="secnum">7</span>Design patterns</h2>
+  <p>Be honest in the interview. Say which patterns the code <i>uses</i> and which ones you <i>would add</i>.</p>
+  <div class="grid2">
+    <div class="card"><h4>Strategy <span class="tag used">used</span></h4><p><code>PricingStrategy</code> (time / event) and <code>PaymentStrategy</code> (cash / UPI / card). <code>PaymentProcessor</code> is the context. Pricing can be swapped at runtime.</p></div>
+    <div class="card"><h4>Simple Factory <span class="tag used">used</span></h4><p><code>VehicleFactory</code>, <code>PricingStrategyFactory</code>, <code>PaymentStrategyFactory</code>: enum in, object out. One <code>switch</code> per family, in one place.</p></div>
+    <div class="card"><h4>Singleton <span class="tag used">used</span></h4><p><code>ParkingLot.getInstance()</code>, eager and thread-safe. Simple for one lot. The cost: shared state between tests, and no way to model two lots.</p></div>
+    <div class="card"><h4>Builder <span class="tag used">used</span></h4><p>Lombok <code>@Builder</code> on <code>Ticket</code>: named fields, no long constructor. Watch the <code>@Builder.Default</code> trap.</p></div>
+    <div class="card"><h4>Inheritance + polymorphism <span class="tag used">used</span></h4><p><code>Vehicle</code> → Car / Bike / Truck. <code>Gate</code> → EntryGate / ExitGate.</p></div>
+    <div class="card"><h4>Lock-free CAS <span class="tag used">used</span></h4><p>Not GoF, but the key idea: <code>AtomicBoolean.compareAndSet(false, true)</code> books one spot without a lock.</p></div>
+    <div class="card"><h4>Strategy for spot choice <span class="tag could">would add</span></h4><p><code>SpotAllocationStrategy</code>: first free, nearest to gate, lowest floor. Today the order is whatever <code>HashMap</code> gives.</p></div>
+    <div class="card"><h4>Observer <span class="tag could">would add</span></h4><p>Spots fire <code>onOccupied</code> / <code>onFreed</code>. A display board and a logger listen. Removes <code>System.out</code> from the model.</p></div>
+    <div class="card"><h4>Dependency injection <span class="tag could">would add</span></h4><p>Pass the <code>ParkingLot</code> into the gates instead of <code>getInstance()</code>. Tests get a fresh lot each time.</p></div>
+    <div class="card"><h4>One global lock <span class="tag avoid">avoid</span></h4><p><code>synchronized parkVehicle()</code> works but makes all gates wait in line. Lock (or CAS) the spot, not the lot.</p></div>
+  </div>
+  <div class="callout"><b class="t">SOLID check</b>
+    <ul>
+      <li><b>S</b> — Spot books itself, floor searches, pricing prices, payment pays. (<code>System.out</code> in the model breaks this a little.)</li>
+      <li><b>O</b> — New pricing or payment: a new class + one factory case. <code>ParkingLot</code> does not change.</li>
+      <li><b>L</b> — Any <code>PricingStrategy</code> works in the lot. But <code>EventBasedPricing</code> accepts exit &lt; entry while <code>TimeBasedPricing</code> throws — the contract is not the same.</li>
+      <li><b>I</b> — Each interface has one method.</li>
+      <li><b>D</b> — <code>ParkingLot</code> depends on <code>PricingStrategy</code> (good) but calls static factories and gates call <code>getInstance()</code> (weak).</li>
+    </ul>
+  </div>
+  <h3>Example: a spot-allocation strategy</h3>
+<div class="code"><div class="chead"><span>SpotAllocationStrategy.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public interface SpotAllocationStrategy {
+    // returns a spot that is already booked (tryOccupy() == true), or null
+    ParkingSpot allocate(Collection&lt;ParkingFloor&gt; floors, VehicleType type);
+}
+
+public class LowestFloorFirst implements SpotAllocationStrategy {
+    public ParkingSpot allocate(Collection&lt;ParkingFloor&gt; floors, VehicleType type) {
+        return floors.stream()
+                .sorted(Comparator.comparing(ParkingFloor::getId))
+                .map(f -&gt; f.findAvailableSpot(type))
+                .filter(Objects::nonNull)
+                .findFirst().orElse(null);
+    }
+}
+
+// In ParkingLot: ParkingSpot spot = allocationStrategy.allocate(floors.values(), vehicle.getType());</code></pre></div>
+  <p class="why">The lot no longer decides <i>which</i> spot. A “nearest to gate” rule is one new class.</p>
+</div>
+</section>
+
+<!-- ============ 9. SIMILAR ============ -->
+<section id="similar">
+<div class="prose">
+  <h2><span class="secnum">8</span>Similar problems</h2>
+  <p>A problem is similar only if the <b>Parking Lot model carries over</b>: a pool of typed slots, an atomic “book a free slot of this type” on entry, a ticket or session, and a fee + payment on release. The problems below share that skeleton. They are ranked by how much of this design you can reuse.</p>
+
+  <div class="callout info"><b class="t">The shared skeleton</b>
+    <p><code>Facility</code> → has <code>Group</code>s → has <code>Slot</code>s (typed, atomic book / free) · on entry: <b>find free slot of type → book → issue ticket</b> · on exit: <b>look up ticket → price (Strategy) → pay (Strategy) → free slot</b>.</p>
+  </div>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Problem</th><th>Reuse from Parking Lot</th><th>New part to learn</th></tr></thead>
+    <tbody>
+      <tr><td><b>EV charging station</b><br><span class="pill easy" style="margin-top:4px;display:inline-block">closest</span></td><td>Station → chargers like lot → spots. Charger type (fast / slow, connector) like <code>VehicleType</code>. Session ticket, pricing and payment strategies.</td><td>Fee by kWh plus time. Idle fee after charging ends. Charger can be faulty (state).</td></tr>
+      <tr><td><b>Amazon locker</b></td><td>Locker location → lockers by size (S / M / L), atomic book of a free locker, a code as the ticket, release on pick-up.</td><td>Size fit (small parcel may use a large locker). OTP check. Expiry: return the parcel after N days.</td></tr>
+      <tr><td><b>Car rental</b></td><td>Branch → vehicles by type, <code>VehicleFactory</code>, pricing strategy (hourly / distance), payment strategy, booking as the ticket.</td><td>Booking is for a <b>time range</b>, so “free” means no overlap with other bookings. Pick-up and drop at different branches.</td></tr>
+      <tr><td><b>Hotel room booking</b></td><td>Hotel → floors → rooms by type, book a free room of a type, check-in record, bill at check-out with a pricing strategy.</td><td>Date-range availability. Reservations before arrival. Room states (clean, dirty, maintenance).</td></tr>
+      <tr><td><b>Restaurant table booking</b></td><td>Restaurant → tables by size, book a free table that fits, release when the party leaves.</td><td>Best-fit by party size. Time slots. Wait list when full.</td></tr>
+      <tr><td><b>BookMyShow (seat booking)</b></td><td>Theatre → screen → seats by type, like lot → floor → spot. Atomic seat lock under concurrency. Payment strategy.</td><td>Shows and time. Many seats in one booking (all or none). Seat hold with a timeout before payment.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip"><b class="t">Practice order</b>EV charging → Amazon locker → Restaurant table → Hotel → Car rental → BookMyShow. Each one adds one new idea to the same skeleton: size fit, time slots, date ranges, multi-seat locks.</div>
+</div>
+</section>
+
+<!-- ============ 9. RECAP ============ -->
+<section id="recap">
+<div class="prose">
+  <h2><span class="secnum">9</span>Revision cheat sheet</h2>
+  <p style="color:var(--muted)">Read top to bottom, in the order you speak in the interview. Then close your eyes and use the flip cards.</p>
+
+  <div class="tldr">
+    <span class="tldr-k">In one breath</span>
+    <b>ParkingLot</b> (singleton) has <b>Floors</b>; a floor has <b>Spots</b>. The <b>EntryGate</b> asks the lot to park: the first free spot of the right type is booked by <b>CAS</b>, and a <b>Ticket</b> is issued. The <b>ExitGate</b> gives the ticket back: a <b>PricingStrategy</b> computes the fee, a <b>PaymentStrategy</b> takes it, and the spot is freed.
+  </div>
+
+  <div class="tl">
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#EFF1F4;border-color:#A9B1BD">1</div>
+      <div class="tl-body">
+        <h4>Understand the system</h4>
+        <p class="say">Enter → get ticket → spot booked → … → exit → fee → pay → spot freed. Many gates at once.</p>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#FFF6C7;border-color:#FFD43B">2</div>
+      <div class="tl-body">
+        <h4>Requirement gathering</h4>
+        <div class="bucket">
+          <span class="bk">Core</span><span>floors → spots by type · exact type match · ticket on entry · fee per hour (rounded up) · pay, then exit</span>
+          <span class="bk">Extensibility</span><span>new vehicle · new pricing · new payment · spot choice rule · display board</span>
+          <span class="bk">Dynamic</span><span>floors and spots added at runtime · pricing from a string · payment mode at exit · times passed in</span>
+          <span class="bk">High traffic</span><span><b>needed</b> — CAS per spot · ConcurrentHashMap for tickets · remove-first on exit</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#FFE3E3;border-color:#F27474">3</div>
+      <div class="tl-body">
+        <h4>Core entities</h4>
+        <div class="chips">
+          <span class="chip">ParkingLot</span><span class="chip">ParkingFloor</span><span class="chip hl">ParkingSpot (CAS)</span><span class="chip">Ticket</span>
+          <span class="chip">Vehicle → Car, Bike, Truck</span><span class="chip">Gate → Entry, Exit</span>
+          <span class="chip hl">PricingStrategy</span><span class="chip hl">PaymentStrategy</span><span class="chip">PaymentProcessor</span><span class="chip">3 factories</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#EFE7FF;border-color:#A98BF5">4</div>
+      <div class="tl-body">
+        <h4>Class diagram + flow</h4>
+        <div class="figure" id="figRev" style="margin:4px 0 0">
+          <div class="fhead"><b>Who owns what · who calls whom</b><span class="sp"></span>
+            <button class="btn" type="button" data-fs="figRev">⤢ Full screen</button>
+            <button class="btn primary" type="button" data-png="revSvg" data-name="parking-lot-revision.png">⬇ PNG</button>
+          </div>
+          <div class="canvas"><svg id="revSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" role="img" aria-label="Class diagram with call flow"></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#EFF1F4;border-color:#A9B1BD">5</div>
+      <div class="tl-body">
+        <h4>Working code — the only lines to remember</h4>
+<pre class="tree"><span class="tc">// ParkingSpot</span>
+return occupied.compareAndSet(false, true);
+
+<span class="tc">// park</span>
+for (ParkingFloor floor : floors.values()) {
+    ParkingSpot spot = floor.findAvailableSpot(type);   <span class="tc">// type match &amp;&amp; tryOccupy()</span>
+    if (spot != null) { activeTickets.put(id, ticket(floor, spot)); return ticket; }
+}
+
+<span class="tc">// unpark</span>
+double fee = pricingStrategy.calculateFee(type, entryTime, exitTime);
+if (!new PaymentProcessor(PaymentStrategyFactory.get(mode)).pay(ticket, fee)) return;
+spot.vacate(); activeTickets.remove(ticketId);</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Traps → fixes</h3>
+  <div class="tablewrap"><table class="traps">
+    <tbody>
+      <tr><td>Two gates see the same free spot</td><td><code>tryOccupy()</code> with <code>compareAndSet</code> (done in the code)</td></tr>
+      <tr><td><code>activeTickets</code> is a <code>HashMap</code> written by many gates</td><td><code>ConcurrentHashMap</code></td></tr>
+      <tr><td>Same ticket at two exit gates → charged twice</td><td><code>Ticket t = activeTickets.remove(id)</code> first; put it back if the payment fails</td></tr>
+      <tr><td><code>@Builder</code> ignores <code>= PENDING</code> → status is <code>null</code></td><td><code>@Builder.Default</code> on the field</td></tr>
+      <tr><td><code>isPeak</code> uses <code>!isAfter(17:00)</code> → the 17:00–18:00 hour is peak</td><td><code>time.isBefore(PEAK_END)</code></td></tr>
+      <tr><td>Exit before entry → negative fee in <code>EventBasedPricing</code></td><td>Validate once in <code>ParkingLot.unparkVehicle</code></td></tr>
+      <tr><td>Exit in the same minute → fee ₹0</td><td>Ask the interviewer; usually charge a minimum of 1 hour</td></tr>
+      <tr><td><code>HashMap</code> floors → random floor order</td><td><code>LinkedHashMap</code> / <code>TreeMap</code>, or a <code>SpotAllocationStrategy</code></td></tr>
+      <tr><td><code>Main</code> starts threads but never joins them</td><td><code>t1.join(); t2.join();</code> then <code>lot.printStatus()</code></td></tr>
+      <tr><td>Singleton lot leaks state between tests</td><td>Inject the lot into the gates</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Patterns in one look</h3>
+  <div class="pat">
+    <div><span class="tag used">used</span>Strategy (pricing, payment) · Factory ×3 · Singleton · Builder · inheritance · CAS</div>
+    <div><span class="tag could">add</span>SpotAllocationStrategy · Observer (display board) · dependency injection</div>
+    <div><span class="tag avoid">avoid</span>one global lock on <code>parkVehicle</code> · <code>if/else</code> on type or mode in the lot</div>
+  </div>
+
+  <h3>Test yourself</h3>
+  <div class="fc-bar">
+    <span style="color:var(--muted);font-size:14px">Say the answer out loud first. Then tap the card.</span>
+    <button class="btn" type="button" id="fcAll">Show all answers</button>
+  </div>
+  <div class="fc-grid" id="fcGrid">
+    <button class="fc" type="button"><span class="q">How do you stop two gates from giving out the same spot?</span><span class="a"><code>tryOccupy()</code> = <code>occupied.compareAndSet(false, true)</code>. Only one thread wins. The loser checks the next spot. No lock on the lot.</span></button>
+    <button class="fc" type="button"><span class="q">Why is the fee in a PricingStrategy and not in ParkingLot?</span><span class="a">The rule changes (time, event, weekend). A new rule is a new class; <code>setPricingStrategy</code> swaps it at runtime. ParkingLot does not change (OCP).</span></button>
+    <button class="fc" type="button"><span class="q">Car in 7:30, out 13:15. Time-based fee? Event-based?</span><span class="a">345 min → 6 h. Slots 7 (non-peak) + 8–12 (5 peak) = 20 + 150 = <b>₹170</b>. Event: 6 × 50 = <b>₹300</b>.</span></button>
+    <button class="fc" type="button"><span class="q">ParkingLot ↔ ParkingFloor ↔ ParkingSpot: which relationship?</span><span class="a">“has many”. Aggregation in this code (Main creates them and adds them). Composition if the lot builds its own floors.</span></button>
+    <button class="fc" type="button"><span class="q">Why does Ticket store floorId and spotId, not the objects?</span><span class="a">Plain values are easy to print, store and send. At exit: <code>floors.get(floorId).getSpots().get(spotId)</code>.</span></button>
+    <button class="fc" type="button"><span class="q">One ticket is used at two exit gates at once. What goes wrong? Fix?</span><span class="a">Both <code>get()</code> it, both charge. Fix: <code>remove(id)</code> first on a <code>ConcurrentHashMap</code> — only one thread gets the ticket.</span></button>
+    <button class="fc" type="button"><span class="q">Payment fails at exit. What state is left?</span><span class="a">Status = FAILED. The spot stays occupied. The ticket stays active. The driver can try again.</span></button>
+    <button class="fc" type="button"><span class="q">The interviewer adds an EV type. What do you change?</span><span class="a"><code>VehicleType.EV</code>, <code>class EV extends Vehicle</code>, a factory case, and EV rates in each pricing strategy. Spots of type EV. ParkingLot does not change.</span></button>
+  </div>
+</div>
+<footer class="prose">Notes for revision. Code from <code>Low-Level-Design/src/main/java/org/nailyourinterview/lld/parking_lot</code>. Layout inspired by the AlgoMaster LLD format.</footer>
+</section>
+
+</main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+<script>
+(function(){
+/* ---------- theme ---------- */
+const root = document.documentElement;
+try { const t = localStorage.getItem('sl-theme'); if (t) root.dataset.theme = t; } catch(e){}
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('sl-theme', root.dataset.theme); } catch(e){}
+});
+
+/* ---------- toc, scrollspy, progress ---------- */
+document.getElementById('mtoc').innerHTML = document.getElementById('toc').innerHTML.replace(/<h4>.*?<\/h4>/,'');
+const links = [...document.querySelectorAll('#toc a')];
+const obs = new IntersectionObserver(es => {
+  es.forEach(e => { if (e.isIntersecting) links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id)); });
+}, { rootMargin: '-30% 0px -65% 0px' });
+document.querySelectorAll('main section').forEach(s => obs.observe(s));
+const bar = document.getElementById('progress');
+addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - innerHeight;
+  bar.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%';
+}, { passive: true });
+
+/* ---------- copy buttons ---------- */
+document.querySelectorAll('.code .copy').forEach(b => b.addEventListener('click', () => {
+  const txt = b.closest('.code').querySelector('code').innerText;
+  navigator.clipboard && navigator.clipboard.writeText(txt).then(() => { b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1200); });
+}));
+
+/* ---------- SVG diagram engine (miro-style) ---------- */
+const NS = 'http://www.w3.org/2000/svg';
+const FONT = "Inter, 'Segoe UI', Arial, sans-serif";
+const MONO = "'JetBrains Mono', Consolas, 'Courier New', monospace";
+function el(tag, attrs, parent){ const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; }
+function txt(parent, x, y, s, attrs){ const t = el('text', Object.assign({x, y, style: 'font-variant-ligatures:none'}, attrs || {}), parent); t.textContent = s; return t; }
+
+function setupCanvas(svg){
+  const defs = el('defs', {}, svg);
+  const pat = el('pattern', {id: svg.id + '-dots', width: 22, height: 22, patternUnits: 'userSpaceOnUse'}, defs);
+  el('circle', {cx: 2, cy: 2, r: 1.2, fill: '#d5d9e0'}, pat);
+  const f = el('filter', {id: svg.id + '-sh', x: '-10%', y: '-10%', width: '130%', height: '140%'}, defs);
+  el('feDropShadow', {dx: 0, dy: 3, stdDeviation: 4, 'flood-color': '#1f2a44', 'flood-opacity': .14}, f);
+  const vb = svg.viewBox.baseVal;
+  el('rect', {x: 0, y: 0, width: vb.width, height: vb.height, fill: '#fbfbfc'}, svg);
+  el('rect', {x: 0, y: 0, width: vb.width, height: vb.height, fill: `url(#${svg.id}-dots)`}, svg);
+  return { edges: el('g', {}, svg), nodes: el('g', {}, svg), deco: el('g', {}, svg), labels: el('g', {}, svg) };
+}
+
+const PALETTE = {
+  yellow: ['#FFF6C7', '#FFD43B', '#8a6d00'],
+  blue:   ['#E3EEFF', '#7DAEF8', '#1d4f99'],
+  sky:    ['#EAF4FF', '#A8CCFB', '#1d4f99'],
+  green:  ['#E2F7E7', '#69C985', '#1b6b34'],
+  purple: ['#EFE7FF', '#A98BF5', '#4b2ea3'],
+  orange: ['#FFEADB', '#FFA463', '#8a3b00'],
+  red:    ['#FFE3E3', '#F27474', '#8f1d1d'],
+  teal:   ['#DBF7EF', '#45C9A4', '#0d6650'],
+  pink:   ['#FDE6F4', '#EA82C0', '#8a1e5c'],
+  gray:   ['#EFF1F4', '#A9B1BD', '#3d4450']
+};
+
+function classBox(g, svgId, b){
+  const [body, head, ink] = PALETTE[b.c];
+  const LH = 17, PAD = 8, headH = b.st ? 48 : 34;
+  const fH = b.f.length ? b.f.length * LH + PAD * 2 : 0;
+  const mH = b.m.length ? b.m.length * LH + PAD * 2 : 0;
+  const h = headH + fH + mH;
+  const grp = el('g', {transform: `translate(${b.x},${b.y})`, filter: `url(#${svgId}-sh)`}, g);
+  el('rect', {width: b.w, height: h, rx: 12, fill: body, stroke: head, 'stroke-width': 1.5}, grp);
+  el('path', {d: `M0 12 A12 12 0 0 1 12 0 H${b.w - 12} A12 12 0 0 1 ${b.w} 12 V${headH} H0 Z`, fill: head}, grp);
+  if (b.st) txt(grp, b.w / 2, 18, b.st, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 11.5, 'font-style': 'italic', fill: '#1f2328', opacity: .75});
+  txt(grp, b.w / 2, b.st ? 38 : 23, b.name, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 16, 'font-weight': 800, fill: '#1f2328', 'font-style': b.abs ? 'italic' : 'normal'});
+  let y = headH;
+  if (b.f.length){
+    b.f.forEach((s, i) => txt(grp, 12, y + PAD + LH * (i + 1) - 4, s, {'font-family': MONO, 'font-size': 12.5, fill: ink}));
+    y += fH;
+    if (b.m.length) el('line', {x1: 0, y1: y, x2: b.w, y2: y, stroke: head, 'stroke-width': 1}, grp);
+  }
+  b.m.forEach((s, i) => txt(grp, 12, y + PAD + LH * (i + 1) - 4, s, {'font-family': MONO, 'font-size': 12.5, fill: '#1f2328'}));
+  b.h = h;
+}
+
+function roundedPath(pts, r){
+  if (pts.length < 3) return `M${pts[0][0]} ${pts[0][1]} L${pts[1][0]} ${pts[1][1]}`;
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++){
+    const [px, py] = pts[i - 1], [cx, cy] = pts[i], [nx, ny] = pts[i + 1];
+    const l1 = Math.hypot(cx - px, cy - py), l2 = Math.hypot(nx - cx, ny - cy);
+    const rr = Math.min(r, l1 / 2, l2 / 2);
+    const ax = cx - (cx - px) / l1 * rr, ay = cy - (cy - py) / l1 * rr;
+    const bx = cx + (nx - cx) / l2 * rr, by = cy + (ny - cy) / l2 * rr;
+    d += ` L${ax} ${ay} Q${cx} ${cy} ${bx} ${by}`;
+  }
+  const last = pts[pts.length - 1];
+  return d + ` L${last[0]} ${last[1]}`;
+}
+function unit(a, b){ const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; }
+
+function edge(L, e){
+  const color = e.color || '#4a5263';
+  const dashed = e.kind === 'dep';
+  el('path', {d: roundedPath(e.p, 14), fill: 'none', stroke: color, 'stroke-width': 1.8, 'stroke-dasharray': dashed ? '6 5' : 'none', 'stroke-linecap': 'round'}, L.edges);
+  const p0 = e.p[0], p1 = e.p[1], pn = e.p[e.p.length - 1], pm = e.p[e.p.length - 2];
+  if (e.kind === 'comp' || e.kind === 'agg'){
+    const [ux, uy] = unit(p0, p1), vx = -uy, vy = ux;
+    const pt = (a, b) => `${p0[0] + ux * a + vx * b},${p0[1] + uy * a + vy * b}`;
+    el('polygon', {points: [pt(0, 0), pt(9, 6), pt(18, 0), pt(9, -6)].join(' '), fill: e.kind === 'comp' ? color : '#ffffff', stroke: color, 'stroke-width': 1.6}, L.deco);
+  }
+  if (e.kind === 'inh'){
+    const [ux, uy] = unit(pm, pn), vx = -uy, vy = ux;
+    const pt = (a, b) => `${pn[0] - ux * a + vx * b},${pn[1] - uy * a + vy * b}`;
+    el('polygon', {points: [pt(0, 0), pt(16, 9), pt(16, -9)].join(' '), fill: '#ffffff', stroke: color, 'stroke-width': 1.6}, L.deco);
+  }
+  if (e.kind === 'dep' || e.kind === 'assoc'){
+    const [ux, uy] = unit(pm, pn), vx = -uy, vy = ux;
+    const pt = (a, b) => `${pn[0] - ux * a + vx * b},${pn[1] - uy * a + vy * b}`;
+    el('polyline', {points: [pt(12, 7), pt(0, 0), pt(12, -7)].join(' '), fill: 'none', stroke: color, 'stroke-width': 1.8, 'stroke-linejoin': 'round', 'stroke-linecap': 'round'}, L.deco);
+  }
+  if (e.kind === 'flow'){
+    const [ux, uy] = unit(pm, pn), vx = -uy, vy = ux;
+    const pt = (a, b) => `${pn[0] - ux * a + vx * b},${pn[1] - uy * a + vy * b}`;
+    el('polygon', {points: [pt(0, 0), pt(12, 6), pt(12, -6)].join(' '), fill: color}, L.deco);
+  }
+  if (e.kind === 'merge') el('circle', {cx: pn[0], cy: pn[1], r: 4, fill: color}, L.deco);
+  if (e.label) label(L, e.label[0], e.label[1], e.label[2], e.labelColor, e.labelSize);
+}
+function label(L, x, y, s, color, size){
+  const t = txt(L.labels, x, y + (size ? size / 3 : 4), s, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': size || 12, 'font-weight': 600, fill: color || '#3d4450'});
+  const bb = t.getBBox();
+  const r = el('rect', {x: bb.x - 7, y: bb.y - 3, width: bb.width + 14, height: bb.height + 6, rx: 9, fill: '#ffffff', stroke: '#d9dde4'});
+  L.labels.insertBefore(r, t);
+}
+function sticky(L, svgId, x, y, w, h, color, title, lines, rot, fs){
+  fs = fs || 13;
+  const g = el('g', {transform: `translate(${x},${y}) rotate(${rot || 0})`, filter: `url(#${svgId}-sh)`}, L.nodes);
+  el('rect', {width: w, height: h, rx: 4, fill: color}, g);
+  txt(g, 14, 12 + fs + 1, title, {'font-family': FONT, 'font-size': fs + 1, 'font-weight': 800, fill: '#1f2328'});
+  lines.forEach((s, i) => txt(g, 14, 24 + fs * 2 + i * fs * 1.45, s, {'font-family': FONT, 'font-size': fs, fill: '#2f3540'}));
+  return g;
+}
+
+/* ---------- class diagram ---------- */
+(function(){
+  const svg = document.getElementById('classSvg');
+  const L = setupCanvas(svg);
+  txt(L.labels, 40, 34, 'Parking Lot — Class Diagram', {'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+  const boxes = [
+    {name: 'Gate', st: '«abstract»', abs: true, x: 40, y: 70, w: 300, c: 'orange', f: ['# id: String'], m: ['+ getType(): GateType']},
+    {name: 'EntryGate', x: 40, y: 250, w: 300, c: 'orange', f: [], m: ['+ parkVehicle(Vehicle, time): Ticket']},
+    {name: 'ExitGate', x: 40, y: 340, w: 300, c: 'orange', f: [], m: ['+ unparkVehicle(id, time, mode)']},
+    {name: 'Ticket', x: 40, y: 470, w: 300, c: 'green', f: ['- ticketId: String (UUID)', '- entryTime: LocalDateTime', '- vehicle: Vehicle', '- floorId: String', '- spotId: String', '- paymentStatus: PaymentStatus'], m: []},
+    {name: 'Vehicle', st: '«abstract»', abs: true, x: 40, y: 700, w: 300, c: 'teal', f: ['- number: String', '- type: VehicleType'], m: []},
+    {name: 'Car', x: 40, y: 860, w: 90, c: 'teal', f: [], m: []},
+    {name: 'Bike', x: 145, y: 860, w: 90, c: 'teal', f: [], m: []},
+    {name: 'Truck', x: 250, y: 860, w: 90, c: 'teal', f: [], m: []},
+    {name: 'VehicleFactory', st: '«factory»', x: 40, y: 940, w: 300, c: 'pink', f: [], m: ['+ create(number, type): Vehicle']},
+    {name: 'ParkingLot', st: '«singleton»', x: 440, y: 70, w: 400, c: 'yellow', f: ['- INSTANCE: ParkingLot  {static}', '- floors: Map<id, ParkingFloor>', '- activeTickets: Map<id, Ticket>', '- pricingStrategy: PricingStrategy'], m: ['+ getInstance(): ParkingLot', '+ addFloor(ParkingFloor)', '+ parkVehicle(Vehicle, time): Ticket', '+ unparkVehicle(id, time, mode)', '+ setPricingStrategy(PricingStrategy)', '+ printStatus()']},
+    {name: 'ParkingFloor', x: 440, y: 400, w: 360, c: 'blue', f: ['- id: String', '- spots: Map<id, ParkingSpot>'], m: ['+ addSpot(ParkingSpot)', '+ findAvailableSpot(VehicleType)']},
+    {name: 'ParkingSpot', x: 440, y: 620, w: 360, c: 'sky', f: ['- id: String', '- allowedType: VehicleType', '- occupied: AtomicBoolean'], m: ['+ tryOccupy(): boolean   // CAS', '+ vacate(): void', '+ isOccupied(): boolean']},
+    {name: 'Enums', st: '«enum»', x: 440, y: 860, w: 400, c: 'gray', f: ['VehicleType: CAR, BIKE, TRUCK', 'PaymentMode: CASH, UPI, CARD', 'PaymentStatus: PENDING, SUCCESS, FAILED', 'PricingStrategyType: TIME / EVENT_BASED', 'GateType: ENTRY, EXIT'], m: []},
+    {name: 'PricingStrategyFactory', st: '«factory»', x: 920, y: 70, w: 440, c: 'pink', f: [], m: ['+ get(PricingStrategyType): PricingStrategy']},
+    {name: 'PricingStrategy', st: '«interface»', abs: true, x: 920, y: 200, w: 440, c: 'purple', f: [], m: ['+ calculateFee(type, entry, exit): double']},
+    {name: 'TimeBasedPricing', x: 920, y: 330, w: 210, c: 'purple', f: ['peak 8–17: 30/15/50', 'else: 20/10/30'], m: []},
+    {name: 'EventBasedPricing', x: 1150, y: 330, w: 210, c: 'purple', f: ['flat: 50/30/70', 'per hour, no peak'], m: []},
+    {name: 'PaymentStrategyFactory', st: '«factory»', x: 920, y: 460, w: 440, c: 'pink', f: [], m: ['+ get(PaymentMode): PaymentStrategy']},
+    {name: 'PaymentProcessor', x: 920, y: 600, w: 440, c: 'red', f: ['- strategy: PaymentStrategy'], m: ['+ pay(Ticket, amount): boolean']},
+    {name: 'PaymentStrategy', st: '«interface»', abs: true, x: 920, y: 760, w: 440, c: 'red', f: [], m: ['+ processPayment(Ticket, amount): boolean']},
+    {name: 'CashPayment', x: 920, y: 900, w: 140, c: 'red', f: [], m: []},
+    {name: 'UpiPayment', x: 1070, y: 900, w: 140, c: 'red', f: [], m: []},
+    {name: 'CardPayment', x: 1220, y: 900, w: 140, c: 'red', f: [], m: []}
+  ];
+  boxes.forEach(b => classBox(L.nodes, svg.id, b));
+  /* Gate 70..184, Entry 250..317, Exit 340..407, Ticket 470..622, Vehicle 700..798, Car/Bike/Truck 860..894,
+     VehicleFactory 940..1021, Lot 70..320, Floor 400..534, Spot 620..788, Enums 860..1009,
+     PricingFactory 70..151, Pricing 200..281, Time/Event 330..414, PaymentFactory 460..541,
+     Processor 600..700, PaymentStrategy 760..841, Cash/Upi/Card 900..934 */
+  const E = [
+    {kind: 'inh',  p: [[190, 250], [190, 184]], label: [190, 217, 'is a']},
+    {kind: 'inh',  p: [[40, 373], [20, 373], [20, 150], [40, 150]], label: [22, 262, 'is a']},
+    {kind: 'dep',  p: [[340, 283], [370, 283], [370, 140], [440, 140]], label: [405, 140, 'uses']},
+    {kind: 'dep',  p: [[340, 373], [390, 373], [390, 172], [440, 172]], label: [415, 172, 'uses']},
+    {kind: 'comp', p: [[440, 290], [420, 290], [420, 545], [340, 545]], label: [380, 545, 'has many']},
+    {kind: 'agg',  p: [[190, 622], [190, 700]], label: [190, 661, 'has a']},
+    {kind: 'inh',  p: [[85, 860], [85, 830], [190, 830], [190, 798]], label: [138, 830, 'is a']},
+    {kind: 'inh',  p: [[190, 860], [190, 798]]},
+    {kind: 'inh',  p: [[295, 860], [295, 830], [190, 830], [190, 798]]},
+    {kind: 'dep',  p: [[190, 940], [190, 894]], label: [190, 917, 'creates']},
+    {kind: 'agg',  p: [[620, 320], [620, 400]], label: [620, 360, 'has many']},
+    {kind: 'agg',  p: [[620, 534], [620, 620]], label: [620, 577, 'has many']},
+    {kind: 'dep',  p: [[620, 788], [620, 860]], label: [620, 824, 'uses']},
+    {kind: 'dep',  p: [[840, 110], [920, 110]], label: [880, 110, 'uses']},
+    {kind: 'agg',  p: [[840, 240], [920, 240]], label: [880, 240, 'has a']},
+    {kind: 'dep',  p: [[1140, 151], [1140, 200]], label: [1140, 175, 'creates']},
+    {kind: 'inh',  p: [[1025, 330], [1025, 305], [1140, 305], [1140, 281]], label: [1082, 305, 'is a']},
+    {kind: 'inh',  p: [[1255, 330], [1255, 305], [1140, 305], [1140, 281]]},
+    {kind: 'dep',  p: [[840, 300], [880, 300], [880, 500], [920, 500]], label: [880, 410, 'uses']},
+    {kind: 'dep',  p: [[820, 320], [820, 650], [920, 650]], label: [820, 590, 'creates']},
+    {kind: 'agg',  p: [[1140, 700], [1140, 760]], label: [1140, 730, 'has a']},
+    {kind: 'dep',  p: [[1360, 500], [1390, 500], [1390, 800], [1360, 800]], label: [1390, 650, 'creates']},
+    {kind: 'inh',  p: [[990, 900], [990, 870], [1140, 870], [1140, 841]], label: [1065, 870, 'is a']},
+    {kind: 'inh',  p: [[1140, 900], [1140, 841]]},
+    {kind: 'inh',  p: [[1290, 900], [1290, 870], [1140, 870], [1140, 841]]}
+  ];
+  E.forEach(e => edge(L, e));
+
+  // legend
+  const lg = el('g', {transform: 'translate(40,1060)', filter: `url(#${svg.id}-sh)`}, L.nodes);
+  el('rect', {width: 300, height: 246, rx: 12, fill: '#ffffff', stroke: '#dfe3ea'}, lg);
+  txt(lg, 16, 28, 'Legend', {'font-family': FONT, 'font-size': 14, 'font-weight': 800, fill: '#1f2328'});
+  const LL = {edges: lg, deco: lg, labels: lg};
+  const items = [['comp', 'Composition (owns, same lifetime)'], ['agg', 'Aggregation (has, lives outside)'], ['assoc', 'Association (knows about)'], ['dep', 'Dependency (uses / creates)'], ['inh', 'Inheritance (is-a)']];
+  items.forEach(([k, s], i) => {
+    const y = 60 + i * 36;
+    edge(LL, {kind: k, p: [[18, y], [72, y]]});
+    txt(lg, 86, y + 4, s, {'font-family': FONT, 'font-size': 12.5, fill: '#2f3540'});
+  });
+  txt(lg, 16, 234, '- private   + public   # protected', {'font-family': MONO, 'font-size': 11.5, fill: '#5b6471'});
+
+  // sticky notes
+  sticky(L, svg.id, 400, 1070, 460, 128, '#FFF3A3', '🔒 Concurrency key', ['tryOccupy() = occupied.compareAndSet(false, true)', 'Two gates, one free spot → only one wins.', 'No lock on the whole lot.'], -1, 15);
+  sticky(L, svg.id, 900, 1070, 480, 128, '#D3F5E1', '🎫 Ticket holds ids, not objects', ['floorId + spotId are plain strings.', 'Exit: floors.get(floorId).getSpots().get(spotId)', 'then pricing → payment → vacate().'], 1, 15);
+})();
+
+/* ---------- flowchart ---------- */
+(function(){
+  const svg = document.getElementById('flowSvg');
+  const L = setupCanvas(svg);
+  txt(L.labels, 30, 34, 'parkVehicle() — left · unparkVehicle() — right', {'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+  function node(n){
+    const [body, head] = PALETTE[n.c];
+    const g = el('g', {filter: `url(#${svg.id}-sh)`}, L.nodes);
+    const x = n.x - n.w / 2, y = n.y - n.h / 2;
+    if (n.shape === 'dec') el('polygon', {points: `${n.x},${y} ${x + n.w},${n.y} ${n.x},${y + n.h} ${x},${n.y}`, fill: body, stroke: head, 'stroke-width': 2}, g);
+    else el('rect', {x, y, width: n.w, height: n.h, rx: n.shape === 'term' ? n.h / 2 : 10, fill: body, stroke: head, 'stroke-width': 2}, g);
+    const lines = n.t.split('\n');
+    lines.forEach((s, i) => txt(g, n.x, n.y + 5 + (i - (lines.length - 1) / 2) * 18, s, {'text-anchor': 'middle', 'font-family': n.mono ? MONO : FONT, 'font-size': n.mono ? 13 : 14, 'font-weight': n.mono ? 500 : 700, fill: '#1f2328'}));
+  }
+  el('line', {x1: 640, y1: 60, x2: 640, y2: 800, stroke: '#c9ced6', 'stroke-width': 1.5, 'stroke-dasharray': '4 6'}, L.edges);
+  const N = [
+    // park
+    {x: 300, y: 70,  w: 300, h: 46, shape: 'term', c: 'purple', t: 'EntryGate.parkVehicle(v, t)', mono: true},
+    {x: 300, y: 150, w: 300, h: 46, c: 'blue', t: 'lot.parkVehicle(v, t)', mono: true},
+    {x: 300, y: 255, w: 240, h: 96, shape: 'dec', c: 'yellow', t: 'next floor?', mono: true},
+    {x: 560, y: 255, w: 170, h: 58, c: 'gray', t: 'No spot\nreturn null'},
+    {x: 300, y: 365, w: 380, h: 48, c: 'sky', t: 'spot = floor.findAvailableSpot(type)', mono: true},
+    {x: 300, y: 470, w: 240, h: 96, shape: 'dec', c: 'yellow', t: 'spot != null ?', mono: true},
+    {x: 300, y: 585, w: 380, h: 58, c: 'blue', t: 'Ticket.builder() … .build()\n(UUID, time, vehicle, floor, spot)', mono: true},
+    {x: 300, y: 680, w: 380, h: 46, c: 'blue', t: 'activeTickets.put(id, ticket)', mono: true},
+    {x: 300, y: 770, w: 240, h: 50, shape: 'term', c: 'green', t: '✅ return ticket'},
+    // unpark
+    {x: 870, y: 70,  w: 360, h: 46, shape: 'term', c: 'purple', t: 'ExitGate.unparkVehicle(id, t, mode)', mono: true},
+    {x: 870, y: 150, w: 340, h: 46, c: 'blue', t: 'ticket = activeTickets.get(id)', mono: true},
+    {x: 870, y: 255, w: 250, h: 96, shape: 'dec', c: 'yellow', t: 'ticket == null ?', mono: true},
+    {x: 1100, y: 255, w: 150, h: 58, c: 'gray', t: 'Invalid ticket\nreturn'},
+    {x: 870, y: 365, w: 380, h: 58, c: 'sky', t: 'fee = pricingStrategy\n  .calculateFee(type, in, out)', mono: true},
+    {x: 870, y: 470, w: 400, h: 58, c: 'blue', t: 'processor = new PaymentProcessor(\n  PaymentStrategyFactory.get(mode))', mono: true},
+    {x: 870, y: 585, w: 260, h: 100, shape: 'dec', c: 'yellow', t: 'processor.pay(ticket, fee) ?', mono: true},
+    {x: 1110, y: 585, w: 140, h: 58, c: 'gray', t: 'Payment failed\nvehicle stays'},
+    {x: 870, y: 690, w: 340, h: 58, c: 'blue', t: 'spot.vacate()\nactiveTickets.remove(id)', mono: true},
+    {x: 870, y: 780, w: 280, h: 50, shape: 'term', c: 'green', t: '✅ Exit · fee charged'}
+  ];
+  N.forEach(node);
+  sticky(L, svg.id, 40, 830, 560, 104, '#FFF3A3', '🔒 Inside findAvailableSpot(type)', ['for each spot: allowedType == type && tryOccupy()', 'tryOccupy() = CAS false → true. Only one thread wins.'], 0, 15);
+  sticky(L, svg.id, 680, 830, 490, 104, '#D3F5E1', '💳 Two strategies at work', ['pricingStrategy: TimeBased or EventBased', 'PaymentStrategyFactory.get(mode): Cash / UPI / Card'], 0, 15);
+  const F = [
+    {kind: 'flow', p: [[300, 93], [300, 127]]},
+    {kind: 'flow', p: [[300, 173], [300, 207]]},
+    {kind: 'flow', p: [[420, 255], [475, 255]], label: [447, 255, 'no'], labelColor: '#cf222e'},
+    {kind: 'flow', p: [[300, 303], [300, 341]], label: [328, 322, 'yes'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[300, 389], [300, 422]]},
+    {kind: 'flow', p: [[180, 470], [60, 470], [60, 255], [180, 255]], label: [60, 420, 'no → next floor'], color: '#5b5bd6', labelColor: '#5b5bd6'},
+    {kind: 'flow', p: [[300, 518], [300, 556]], label: [328, 537, 'yes'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[300, 614], [300, 657]]},
+    {kind: 'flow', p: [[300, 703], [300, 745]]},
+    {kind: 'flow', p: [[870, 93], [870, 127]]},
+    {kind: 'flow', p: [[870, 173], [870, 207]]},
+    {kind: 'flow', p: [[995, 255], [1025, 255]], label: [1008, 228, 'yes'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[870, 303], [870, 336]], label: [896, 320, 'no'], labelColor: '#cf222e'},
+    {kind: 'flow', p: [[870, 394], [870, 441]]},
+    {kind: 'flow', p: [[870, 499], [870, 535]]},
+    {kind: 'flow', p: [[1000, 585], [1040, 585]], label: [1020, 558, 'no'], labelColor: '#cf222e'},
+    {kind: 'flow', p: [[870, 635], [870, 661]], label: [898, 648, 'yes'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[870, 719], [870, 755]]}
+  ];
+  F.forEach(e => edge(L, e));
+})();
+
+/* ---------- interview flow ---------- */
+(function(){
+  const svg = document.getElementById('stepsSvg');
+  const L = setupCanvas(svg);
+  const X = 440, W = 260, H = 64;
+  const steps = [
+    {t: 'Understand the system', c: 'gray', y: 40, href: '#overview'},
+    {t: 'Requirement gathering', c: 'yellow', y: 170, href: '#requirements'},
+    {t: 'Core entities + breakdown', c: 'red', y: 320, href: '#entities'},
+    {t: 'Class diagram with flow', c: 'purple', y: 470, href: '#classes'},
+    {t: 'Working code', c: 'gray', y: 610, href: '#code'}
+  ];
+  steps.forEach((st, i) => {
+    const [body, head] = PALETTE[st.c];
+    const a = el('a', {href: st.href}, L.nodes);
+    const g = el('g', {filter: `url(#${svg.id}-sh)`, style: 'cursor:pointer'}, a);
+    el('rect', {x: X, y: st.y, width: W, height: H, rx: 10, fill: body, stroke: head, 'stroke-width': 2.5}, g);
+    txt(g, X + W / 2, st.y + H / 2 + 6, st.t, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 17, 'font-weight': 800, fill: '#1f2328'});
+    if (i) edge(L, {kind: 'flow', p: [[X + W / 2, steps[i - 1].y + H], [X + W / 2, st.y]], color: '#1f2328'});
+  });
+
+  // the 3 requirement buckets
+  const ry = 170 + H / 2;
+  sticky(L, svg.id, 790, 20, 380, 110, '#FFF3A3', '① Extensibility (new features)', ['New vehicle (EV, bus) → Vehicle subclass', 'New pricing / payment → new Strategy', 'Spot choice rule → SpotAllocationStrategy'], 0);
+  sticky(L, svg.id, 790, 150, 380, 110, '#D3F5E1', '② Dynamic (user input)', ['Floors and spots added at runtime', 'Pricing picked from a string at runtime', 'Payment mode chosen at the exit gate'], 0);
+  sticky(L, svg.id, 790, 280, 380, 110, '#FFE3E3', '③ High traffic (concurrency)', ['Needed: many gates park at once', 'Spot: AtomicBoolean CAS → no double booking', 'Tickets → ConcurrentHashMap'], 0);
+  [75, 205, 335].forEach(y => edge(L, {kind: 'dep', p: [[X + W, ry], [745, ry], [745, y], [790, y]]}));
+
+  // side notes per step
+  sticky(L, svg.id, 40, 22, 340, 100, '#E3EEFF', 'Walk one car through', ['enter → ticket → park → pay → exit', 'Which spot? How is the fee found?'], 0);
+  edge(L, {kind: 'dep', p: [[X, 72], [380, 72]]});
+  sticky(L, svg.id, 40, 290, 340, 120, '#EFE7FF', 'Nouns → classes', ['ParkingLot, ParkingFloor, ParkingSpot', 'Vehicle, Ticket, EntryGate, ExitGate', 'PricingStrategy, PaymentStrategy'], 0);
+  edge(L, {kind: 'dep', p: [[X, 352], [380, 352]]});
+  sticky(L, svg.id, 790, 455, 380, 92, '#EFF1F4', 'Relationships', ['has-a → Lot has Floors, Floor has Spots', 'is-a → Car is-a Vehicle, Upi is-a Payment'], 0);
+  edge(L, {kind: 'dep', p: [[X + W, 502], [790, 502]]});
+  sticky(L, svg.id, 790, 595, 380, 92, '#EFF1F4', 'Build bottom-up', ['enums, Vehicle, Spot, Floor, Ticket', '→ strategies → ParkingLot → Gates'], 0);
+  edge(L, {kind: 'dep', p: [[X + W, 642], [790, 642]]});
+
+  // which round covers which steps
+  txt(L.labels, 40, 560, 'LLD round', {'font-family': FONT, 'font-size': 14, 'font-weight': 800, fill: '#5b5bd6'});
+  txt(L.labels, 40, 582, 'Requirements → Entities → Class diagram', {'font-family': FONT, 'font-size': 13, fill: '#2f3540'});
+  txt(L.labels, 40, 620, 'Machine coding round', {'font-family': FONT, 'font-size': 14, 'font-weight': 800, fill: '#e8590c'});
+  txt(L.labels, 40, 642, 'Entities → Working code', {'font-family': FONT, 'font-size': 13, fill: '#2f3540'});
+})();
+
+/* ---------- revision diagram ---------- */
+(function(){
+  const svg = document.getElementById('revSvg');
+  const L = setupCanvas(svg);
+  const FLOW = '#5b5bd6', STRUCT = '#9aa3b2';
+  function box(x, y, w, h, c, name, sub){
+    const [body, head] = PALETTE[c];
+    const g = el('g', {filter: `url(#${svg.id}-sh)`}, L.nodes);
+    el('rect', {x, y, width: w, height: h, rx: 12, fill: body, stroke: head, 'stroke-width': 2.5}, g);
+    txt(g, x + w / 2, y + (sub ? 32 : h / 2 + 7), name, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+    if (sub) txt(g, x + w / 2, y + 56, sub, {'text-anchor': 'middle', 'font-family': MONO, 'font-size': 14, fill: '#3d4450'});
+  }
+  box(40, 40, 220, 72, 'orange', 'EntryGate', 'parkVehicle()');
+  box(40, 200, 220, 72, 'orange', 'ExitGate', 'unparkVehicle()');
+  box(40, 360, 220, 72, 'green', 'Ticket', 'ids + entry time');
+  box(380, 40, 240, 72, 'yellow', 'ParkingLot', 'singleton');
+  box(420, 200, 220, 72, 'blue', 'ParkingFloor', 'Map of spots');
+  box(420, 360, 220, 72, 'sky', 'ParkingSpot', 'AtomicBoolean');
+  box(780, 40, 200, 72, 'purple', 'PricingStrategy', 'time / event');
+  box(780, 200, 200, 72, 'red', 'PaymentStrategy', 'cash / UPI / card');
+
+  // structure: has-a (grey)
+  [
+    {kind: 'agg',  p: [[620, 92], [780, 92]]},
+    {kind: 'agg',  p: [[610, 112], [610, 200]]},
+    {kind: 'agg',  p: [[610, 272], [610, 360]]},
+    {kind: 'comp', p: [[395, 112], [395, 410], [260, 410]]}
+  ].forEach(e => edge(L, Object.assign({color: STRUCT}, e)));
+
+  // flow: numbered calls in one visit (purple)
+  [
+    {p: [[260, 60], [380, 60]], label: [320, 60, '1 · park()']},
+    {p: [[500, 112], [500, 200]], label: [500, 156, '2 · findAvailableSpot()'], size: 15},
+    {p: [[500, 272], [500, 360]], label: [500, 316, '3 · tryOccupy()']},
+    {p: [[380, 96], [340, 96], [340, 380], [260, 380]], label: [340, 320, '4 · new Ticket']},
+    {p: [[260, 220], [300, 220], [300, 80], [380, 80]], label: [282, 165, '5 · unpark()']},
+    {p: [[620, 60], [780, 60]], label: [700, 60, '6 · calculateFee()'], size: 14},
+    {p: [[620, 104], [700, 104], [700, 236], [780, 236]], label: [700, 170, '7 · pay()']}
+  ].forEach(e => edge(L, {kind: 'flow', p: e.p, color: FLOW, label: e.label, labelColor: FLOW, labelSize: e.size || 16}));
+
+  // notes
+  sticky(L, svg.id, 700, 330, 280, 116, '#FFF3A3', '💡 Key idea', ['tryOccupy() is a CAS:', 'false → true in one step.', 'Two gates, one spot: one wins.'], 1, 15);
+  sticky(L, svg.id, 420, 470, 260, 116, '#D3F5E1', '🎫 Exit order', ['6 fee → 7 pay → then', 'vacate() + remove(id).', 'Pay fails → spot stays.'], -1, 15);
+
+  // legend
+  const lg = el('g', {transform: 'translate(40,500)'}, L.labels);
+  el('line', {x1: 0, y1: 10, x2: 44, y2: 10, stroke: STRUCT, 'stroke-width': 2.5}, lg);
+  txt(lg, 54, 16, 'structure: has-a', {'font-family': FONT, 'font-size': 17, fill: '#3d4450'});
+  el('line', {x1: 0, y1: 42, x2: 44, y2: 42, stroke: FLOW, 'stroke-width': 2.5}, lg);
+  txt(lg, 54, 48, '1 → 7  calls in one visit', {'font-family': FONT, 'font-size': 17, 'font-weight': 700, fill: FLOW});
+})();
+
+/* ---------- PNG export + fullscreen ---------- */
+document.querySelectorAll('[data-png]').forEach(b => b.addEventListener('click', () => {
+  const svg = document.getElementById(b.dataset.png);
+  const vb = svg.viewBox.baseVal, k = 2;
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('width', vb.width); clone.setAttribute('height', vb.height);
+  const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = vb.width * k; c.height = vb.height * k;
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fbfbfc'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    c.toBlob(blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = b.dataset.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
+  };
+  img.src = src;
+}));
+document.querySelectorAll('[data-fs]').forEach(b => b.addEventListener('click', () => {
+  const f = document.getElementById(b.dataset.fs);
+  if (document.fullscreenElement) document.exitFullscreen(); else f.requestFullscreen && f.requestFullscreen();
+}));
+
+/* ---------- simulator (mirrors ParkingLot / ParkingFloor / ParkingSpot / pricing) ---------- */
+const LAYOUT = [
+  {id: 'Floor1', spots: [['F1S1', 'BIKE'], ['F1S2', 'CAR'], ['F1S3', 'TRUCK'], ['F1S4', 'CAR']]},
+  {id: 'Floor2', spots: [['F2S1', 'BIKE'], ['F2S2', 'CAR'], ['F2S3', 'CAR'], ['F2S4', 'TRUCK']]}
+];
+const ICON = {BIKE: '🏍', CAR: '🚗', TRUCK: '🚚'};
+const PEAK = {CAR: 30, BIKE: 15, TRUCK: 50}, OFFPEAK = {CAR: 20, BIKE: 10, TRUCK: 30}, EVENT = {CAR: 50, BIKE: 30, TRUCK: 70};
+const START = new Date(2025, 4, 21, 7, 30);
+const floorsEl = document.getElementById('floors'), logEl = document.getElementById('log'), statEl = document.getElementById('lotStat');
+let floors, tickets, clock;
+function log(html, call){ const li = document.createElement('li'); li.innerHTML = html + (call ? `<span class="call">${call}</span>` : ''); logEl.prepend(li); while (logEl.children.length > 40) logEl.lastChild.remove(); }
+const hhmm = d => d.toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
+function fee(type, entry, exit){
+  const mins = Math.floor((exit - entry) / 60000), hours = Math.ceil(mins / 60);
+  if (document.getElementById('pricingSel').value === 'EVENT_BASED') return {fee: EVENT[type] * hours, how: `${hours} h × ₹${EVENT[type]} (event)`};
+  let peak = 0, off = 0; const c = new Date(entry); c.setMinutes(0, 0, 0);
+  for (let i = 0; i < hours; i++){ const h = c.getHours(); if (h >= 8 && h <= 17) peak++; else off++; c.setHours(h + 1); }
+  return {fee: peak * PEAK[type] + off * OFFPEAK[type], how: `${peak} peak × ₹${PEAK[type]} + ${off} non-peak × ₹${OFFPEAK[type]}`};
+}
+function plate(){ return 'KA01AB' + String(1000 + Math.floor(Math.random() * 9000)); }
+function render(){
+  document.getElementById('clock').textContent = '🕒 21 May · ' + hhmm(clock);
+  floorsEl.innerHTML = '';
+  floors.forEach(f => {
+    const fl = document.createElement('div'); fl.className = 'floor';
+    fl.innerHTML = `<h5>${f.id}</h5>`;
+    const grid = document.createElement('div'); grid.className = 'spots';
+    f.spots.forEach(s => {
+      const d = document.createElement('div'); d.className = 'spot' + (s.occ ? ' occ' : '') + (s.flash ? ' flash' : '');
+      d.innerHTML = `<span class="sid">${s.id} · ${s.type}</span><span class="sv">${s.occ ? ICON[s.type] : '—'}</span>` +
+        (s.occ ? `<span class="sp-plate">${s.ticket.plate}</span><button class="btn exitb" type="button">Exit</button>` : '<span class="sp-plate">free</span>');
+      if (s.occ) d.querySelector('.exitb').addEventListener('click', () => unpark(s.ticket.id));
+      grid.appendChild(d); s.flash = false;
+    });
+    fl.appendChild(grid); floorsEl.appendChild(fl);
+  });
+  statEl.innerHTML = `<span style="color:var(--muted)">activeTickets:</span> <b>${Object.keys(tickets).length}</b>`;
+}
+function tryOccupy(s){ if (s.occ) return false; s.occ = true; return true; }   // compareAndSet(false, true)
+function park(type, gate){
+  for (const f of floors){
+    const s = f.spots.find(sp => sp.type === type && tryOccupy(sp));
+    if (s){
+      const id = Math.random().toString(16).slice(2, 10);
+      const t = {id, plate: plate(), type, entry: new Date(clock), floor: f, spot: s};
+      s.ticket = t; s.flash = true; tickets[id] = t;
+      log(`${ICON[type]} <b>${t.plate}</b> parked at <b>${s.id}</b> (${gate}). Ticket <code>${id}</code>, in at ${hhmm(clock)}.`, `${f.id}.findAvailableSpot(${type}) → ${s.id}.tryOccupy() → true; activeTickets.put(id, ticket)`);
+      return true;
+    }
+  }
+  log(`${ICON[type]} No spot available for <b>${type}</b> (${gate}).`, 'every floor returned null → parkVehicle() returns null');
+  return false;
+}
+function unpark(id){
+  const t = tickets[id]; if (!t) return;
+  const mode = document.getElementById('payMode').value, r = fee(t.type, t.entry, clock);
+  t.spot.occ = false; t.spot.ticket = null; delete tickets[id];
+  log(`🚪 <b>${t.plate}</b> leaves ${t.spot.id}. ${hhmm(t.entry)} → ${hhmm(clock)}: ${r.how} = <b>₹${r.fee}</b>, paid by ${mode}.`, `pricingStrategy.calculateFee() → PaymentStrategyFactory.get(${mode}).processPayment() → spot.vacate(); activeTickets.remove(id)`);
+  render();
+}
+function lotReset(){
+  floors = LAYOUT.map(f => ({id: f.id, spots: f.spots.map(([id, type]) => ({id, type, occ: false, ticket: null}))}));
+  tickets = {}; clock = new Date(START); logEl.innerHTML = '';
+  log('Lot ready: 2 floors, 8 spots. Clock at 7:30 AM, 21 May.', 'lot.addFloor(floor1); lot.addFloor(floor2)');
+  render();
+}
+document.getElementById('parkBtn').addEventListener('click', () => { park(document.getElementById('vType').value, 'EG1'); render(); });
+document.getElementById('raceBtn').addEventListener('click', () => {
+  const order = Math.random() < .5 ? ['EG1', 'EG2'] : ['EG2', 'EG1'];
+  log(`⚡ Two bikes reach <b>EG1</b> and <b>EG2</b> at the same moment. ${order[0]}'s CAS runs first.`, 'two threads call parkVehicle(bike, t) together');
+  order.forEach(g => park('BIKE', g));
+  render();
+});
+document.getElementById('t30').addEventListener('click', () => { clock = new Date(clock.getTime() + 30 * 60000); render(); });
+document.getElementById('t60').addEventListener('click', () => { clock = new Date(clock.getTime() + 60 * 60000); render(); });
+document.getElementById('pricingSel').addEventListener('change', e => log(`Pricing switched to <b>${e.target.value}</b>.`, `lot.setPricingStrategy(PricingStrategyFactory.get(${e.target.value}))`));
+document.getElementById('lotReset').addEventListener('click', lotReset);
+lotReset();
+
+/* ---------- code explorer ---------- */
+(function(){
+  const data = JSON.parse(document.getElementById('repoFiles').textContent);
+  const byPath = {}; data.files.forEach(f => byPath[f.path] = f);
+  const MAIN = data.main || 'Main.java';
+  const tree = document.getElementById('ideTree'), tabsEl = document.getElementById('ideTabs');
+  const codeEl = document.getElementById('ideCode'), gut = document.getElementById('ideGutter');
+  const title = document.getElementById('ideTitle'), badge = document.getElementById('ideBadge');
+  document.getElementById('ideCnt').textContent = data.files.length;
+  let open = [], current = null;
+  const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  // build folder tree
+  const root = {dirs: {}, files: []};
+  data.files.forEach(f => {
+    const parts = f.path.split('/'); let n = root;
+    parts.slice(0, -1).forEach(d => n = n.dirs[d] = n.dirs[d] || {dirs: {}, files: []});
+    n.files.push(f.path);
+  });
+  function render(node, parent){
+    Object.keys(node.dirs).sort().forEach(d => {
+      const row = document.createElement('button'); row.type = 'button'; row.className = 'ide-row open';
+      row.innerHTML = `<span class="car">▸</span>📁 ${d}`;
+      const kids = document.createElement('div'); kids.className = 'ide-kids';
+      row.addEventListener('click', () => { kids.hidden = !kids.hidden; row.classList.toggle('open', !kids.hidden); });
+      parent.append(row, kids); render(node.dirs[d], kids);
+    });
+    node.files.sort().forEach(p => {
+      const row = document.createElement('button'); row.type = 'button'; row.className = 'ide-row'; row.dataset.path = p;
+      row.innerHTML = `<span class="car"></span>☕ ${p.split('/').pop()}` + (p === MAIN ? '<span class="mb">MAIN</span>' : '');
+      row.title = p;
+      row.addEventListener('click', () => show(p));
+      parent.appendChild(row);
+    });
+  }
+  render(root, tree);
+
+  function show(p){
+    if (!open.includes(p)) open.push(p);
+    current = p;
+    const f = byPath[p], code = f.code.replace(/\n$/, '');
+    codeEl.innerHTML = window.Prism ? Prism.highlight(code, Prism.languages.java, 'java') : esc(code);
+    gut.textContent = code.split('\n').map((_, i) => i + 1).join('\n');
+    document.getElementById('ideScroll').scrollTop = 0;
+    title.textContent = p.split('/').pop(); badge.hidden = p !== MAIN;
+    tree.querySelectorAll('.ide-row[data-path]').forEach(r => r.classList.toggle('on', r.dataset.path === p));
+    tabsEl.innerHTML = '';
+    open.forEach(q => {
+      const t = document.createElement('button'); t.type = 'button'; t.className = 'ide-tab' + (q === p ? ' on' : '');
+      t.innerHTML = `☕ ${q.split('/').pop()} <span class="x" title="Close">✕</span>`;
+      t.addEventListener('click', e => {
+        if (e.target.classList.contains('x')){
+          open = open.filter(x => x !== q);
+          if (!open.length) open = [MAIN];
+          show(q === current ? open[open.length - 1] : current);
+        } else show(q);
+      });
+      tabsEl.appendChild(t);
+    });
+  }
+  show(MAIN);
+
+  document.getElementById('ideCopy').addEventListener('click', e => {
+    navigator.clipboard && navigator.clipboard.writeText(byPath[current].code).then(() => { e.target.textContent = '✓'; setTimeout(() => e.target.textContent = '⧉', 1200); });
+  });
+  document.getElementById('ideFs').addEventListener('click', () => {
+    const ide = document.getElementById('ide');
+    if (document.fullscreenElement) document.exitFullscreen(); else ide.requestFullscreen && ide.requestFullscreen();
+  });
+  const outBox = document.getElementById('ideOut'), outPre = document.getElementById('ideOutPre'), outTab = document.getElementById('ideOutTab');
+  function toggleOut(force){ outBox.hidden = force === undefined ? !outBox.hidden : !force; outTab.classList.toggle('on', !outBox.hidden); }
+  outTab.addEventListener('click', () => { if (!outPre.textContent) outPre.textContent = data.output; toggleOut(); });
+  let timer = null;
+  document.getElementById('ideRun').addEventListener('click', () => {
+    clearInterval(timer); toggleOut(true);
+    const lines = data.output.split('\n'); let i = 0; outPre.textContent = '';
+    timer = setInterval(() => {
+      outPre.textContent += lines.slice(i, i + 12).join('\n') + '\n'; i += 12;
+      outPre.scrollTop = outPre.scrollHeight;
+      if (i >= lines.length) clearInterval(timer);
+    }, 30);
+  });
+})();
+
+/* ---------- flip cards ---------- */
+const fcs = [...document.querySelectorAll('.fc')];
+fcs.forEach(c => c.addEventListener('click', () => c.classList.toggle('open')));
+document.getElementById('fcAll').addEventListener('click', e => {
+  const show = fcs.some(c => !c.classList.contains('open'));
+  fcs.forEach(c => c.classList.toggle('open', show));
+  e.target.textContent = show ? 'Hide all answers' : 'Show all answers';
+});
+
+})();
+</script>
+</body>
+</html>

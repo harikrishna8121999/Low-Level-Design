@@ -1,0 +1,1713 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vending Machine LLD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff; --bg-soft:#f7f8fa; --bg-card:#ffffff; --text:#1f2328; --muted:#5b6471; --border:#e4e7ec;
+  --accent:#5b5bd6; --accent-soft:#eef0ff; --accent-text:#4343b8;
+  --code-bg:#f6f8fa; --code-text:#24292f;
+  --ok:#1a7f37; --ok-soft:#e8f6ec; --bad:#cf222e; --bad-soft:#fdecee;
+  --warn:#9a6700; --warn-soft:#fff6dd; --info-soft:#eaf3ff; --info:#0b5cad;
+  --tok-kw:#cf222e; --tok-str:#0a3069; --tok-fn:#8250df; --tok-com:#6e7781; --tok-num:#0550ae; --tok-cls:#953800; --tok-ann:#116329;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --bg-soft:#151920; --bg-card:#171b22; --text:#e6e8eb; --muted:#9aa4b2; --border:#2a3039;
+    --accent:#8e8ff7; --accent-soft:#20223f; --accent-text:#b4b5ff;
+    --code-bg:#12161c; --code-text:#d6dbe1;
+    --ok:#4ac26b; --ok-soft:#12261a; --bad:#ff7b72; --bad-soft:#2d1517;
+    --warn:#e3b341; --warn-soft:#2a2210; --info-soft:#0f2136; --info:#79b8ff;
+    --tok-kw:#ff7b72; --tok-str:#a5d6ff; --tok-fn:#d2a8ff; --tok-com:#8b949e; --tok-num:#79c0ff; --tok-cls:#ffa657; --tok-ann:#7ee787;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --bg-soft:#151920; --bg-card:#171b22; --text:#e6e8eb; --muted:#9aa4b2; --border:#2a3039;
+  --accent:#8e8ff7; --accent-soft:#20223f; --accent-text:#b4b5ff;
+  --code-bg:#12161c; --code-text:#d6dbe1;
+  --ok:#4ac26b; --ok-soft:#12261a; --bad:#ff7b72; --bad-soft:#2d1517;
+  --warn:#e3b341; --warn-soft:#2a2210; --info-soft:#0f2136; --info:#79b8ff;
+  --tok-kw:#ff7b72; --tok-str:#a5d6ff; --tok-fn:#d2a8ff; --tok-com:#8b949e; --tok-num:#79c0ff; --tok-cls:#ffa657; --tok-ann:#7ee787;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.7 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--accent-text)}
+code,pre,.mono{font-family:"JetBrains Mono",Consolas,ui-monospace,monospace;font-variant-ligatures:none}
+:not(pre)>code{background:var(--code-bg);border:1px solid var(--border);padding:.08em .38em;border-radius:5px;font-size:.86em}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;height:56px;display:flex;align-items:center;gap:12px;padding:0 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.topbar .brand{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.topbar .crumb{color:var(--muted);font-size:14px}
+.topbar .sp{flex:1}
+.btn{font:inherit;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--bg-card);color:var(--text);padding:6px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--accent);color:var(--accent-text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.08);color:#fff}
+.progress{position:fixed;top:56px;left:0;height:2px;background:var(--accent);width:0;z-index:21}
+
+/* layout */
+.layout{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1440px;margin:0 auto}
+aside.toc{position:sticky;top:56px;height:calc(100vh - 56px);overflow:auto;padding:28px 12px 28px 20px;border-right:1px solid var(--border)}
+.toc h4{margin:0 0 10px 10px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.toc a{display:block;padding:6px 10px;border-radius:7px;font-size:14px;color:var(--muted);text-decoration:none;line-height:1.35}
+.toc a:hover{color:var(--text);background:var(--bg-soft)}
+.toc a.active{color:var(--accent-text);background:var(--accent-soft);font-weight:600}
+.toc .num{display:inline-block;width:22px;color:inherit;opacity:.7;font-variant-numeric:tabular-nums}
+main{padding:40px 48px 120px;min-width:0}
+main section{margin-bottom:64px}
+.prose{max-width:800px}
+h1{font-size:40px;line-height:1.15;letter-spacing:-.02em;margin:0 0 14px;font-weight:800}
+h2{font-size:28px;letter-spacing:-.01em;margin:0 0 16px;padding-top:8px;font-weight:750;line-height:1.25}
+h3{font-size:20px;margin:32px 0 10px;font-weight:700}
+h4{font-size:16px;margin:22px 0 6px}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 14px;padding-left:22px}
+li{margin:4px 0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 22px}
+.pill{font-size:12.5px;font-weight:600;border-radius:999px;padding:3px 10px;border:1px solid var(--border);background:var(--bg-soft);color:var(--muted)}
+.pill.easy{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.lead{font-size:18px;color:var(--muted)}
+.secnum{color:var(--accent);margin-right:8px}
+
+/* callouts */
+.callout{border:1px solid var(--border);border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:10px;padding:14px 16px;margin:18px 0}
+.callout.tip{border-left-color:var(--ok);background:var(--ok-soft)}
+.callout.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.callout.info{border-left-color:var(--info);background:var(--info-soft)}
+.callout b.t{display:block;margin-bottom:4px}
+.callout p:last-child,.callout ul:last-child{margin-bottom:0}
+
+/* chat Q&A */
+.chat{display:flex;flex-direction:column;gap:10px;margin:18px 0 22px}
+.msg{display:flex;gap:10px;align-items:flex-start;max-width:760px}
+.msg .av{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff}
+.msg.c .av{background:#5b5bd6}.msg.i .av{background:#e8590c}
+.msg .bub{border:1px solid var(--border);background:var(--bg-card);border-radius:12px;padding:9px 14px;box-shadow:var(--shadow)}
+.msg.i .bub{background:var(--bg-soft)}
+.msg .who{font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:1px}
+
+/* cards & grids */
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:16px 0}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0}
+.card{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--bg-card);box-shadow:var(--shadow)}
+.card h4{margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.card p{margin:0;color:var(--muted);font-size:14.5px}
+.card .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+.tag.used{background:var(--ok-soft);color:var(--ok)}
+.tag.could{background:var(--info-soft);color:var(--info)}
+.tag.avoid{background:var(--bad-soft);color:var(--bad)}
+
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin:14px 0 20px}
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;margin:14px 0 20px}
+.tablewrap table{margin:0}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--bg-soft);font-size:13px;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+
+/* nouns highlight */
+.noun{background:#fff1a8;color:#3d3200;border-radius:4px;padding:0 3px;font-weight:600}
+:root[data-theme="dark"] .noun{background:#4a3f0c;color:#ffe680}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .noun{background:#4a3f0c;color:#ffe680}}
+
+/* diagram frame */
+.figure{margin:20px 0 28px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--bg-card);box-shadow:var(--shadow)}
+.figure .fhead{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg-soft);flex-wrap:wrap}
+.figure .fhead b{font-size:14px}
+.figure .fhead .sp{flex:1}
+.figure .canvas{background:#fbfbfc;overflow:auto}
+.figure .canvas svg{display:block;width:100%;height:auto;min-width:860px;margin:0 auto}
+#flowSvg{max-width:900px}
+.figure:fullscreen{border-radius:0;display:flex;flex-direction:column}
+.figure:fullscreen .canvas{flex:1}
+.figure:fullscreen .canvas svg{height:100%;min-width:0}
+.figure .cap{padding:10px 14px;font-size:13.5px;color:var(--muted);border-top:1px solid var(--border)}
+
+/* code */
+.code{position:relative;margin:14px 0 20px;border:1px solid var(--border);border-radius:12px;background:var(--code-bg);overflow:hidden}
+.code .chead{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--border);font-size:12.5px;color:var(--muted);font-family:"JetBrains Mono",Consolas,monospace}
+.code .copy{font-size:12px;padding:3px 9px}
+pre{font-variant-ligatures:none;margin:0;padding:14px 16px;overflow:auto;font-size:13.3px;line-height:1.6;color:var(--code-text);tab-size:4}
+pre code{background:none;border:0;padding:0;font-size:inherit}
+.token.keyword,.token.boolean{color:var(--tok-kw)}
+.token.string,.token.char{color:var(--tok-str)}
+.token.function{color:var(--tok-fn)}
+.token.comment{color:var(--tok-com);font-style:italic}
+.token.number{color:var(--tok-num)}
+.token.class-name{color:var(--tok-cls)}
+.token.annotation,.token.punctuation.annotation{color:var(--tok-ann)}
+.token.operator{color:inherit}
+.why{font-size:14.5px;color:var(--muted);border-left:3px solid var(--border);padding:2px 0 2px 12px;margin:-6px 0 22px}
+
+/* serpentine mini grid */
+.serp{display:grid;grid-template-columns:repeat(4,44px);gap:4px;margin:10px 0}
+.serp div{height:44px;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:14px;background:var(--bg-soft);border:1px solid var(--border)}
+.serp div.r{background:var(--accent-soft);color:var(--accent-text)}
+.serpwrap{display:flex;gap:28px;align-items:center;flex-wrap:wrap;margin:10px 0 18px}
+
+/* simulator */
+.sim{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:22px;margin:16px 0 22px;align-items:start}
+.board{position:relative;aspect-ratio:1;width:100%;display:grid;grid-template-columns:repeat(10,1fr);border:2px solid var(--border);border-radius:12px;overflow:hidden;user-select:none}
+.board .cell{position:relative;font-size:10px;font-weight:600;color:#56606c;padding:2px 4px;border-right:1px solid rgba(0,0,0,.04);border-bottom:1px solid rgba(0,0,0,.04)}
+.board .cell.a{background:#f4f1ff}.board .cell.b{background:#ffffff}
+.board .cell.last{background:#fff4c2}
+.board .cell.flash{outline:3px solid #f59f00;outline-offset:-3px}
+.board svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.token-p{position:absolute;width:5.2%;aspect-ratio:1;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transform:translate(-50%,-50%);transition:left .45s ease,top .45s ease;z-index:3;display:grid;place-items:center;color:#fff;font-size:9px;font-weight:800}
+.simside{display:flex;flex-direction:column;gap:12px}
+.simctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.die{font-size:44px;line-height:1;width:58px;height:58px;display:grid;place-items:center;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)}
+.die.spin{animation:spin .35s ease}
+@keyframes spin{from{transform:rotate(-180deg) scale(.6)}to{transform:none}}
+.queue{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
+.queue .q{padding:3px 10px;border-radius:999px;color:#fff;font-weight:700;font-size:12px}
+.queue .q.front{outline:2px solid var(--text);outline-offset:1px}
+.log{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--bg-soft);font-size:13px}
+.log li{padding:7px 11px;border-bottom:1px solid var(--border);margin:0}
+.log li:first-child{background:var(--bg-card)}
+.log .call{font-family:"JetBrains Mono",Consolas,monospace;font-size:11.5px;color:var(--muted);display:block}
+select{font:inherit;font-size:13px;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text)}
+
+/* exercises */
+details{border:1px solid var(--border);border-radius:10px;margin:10px 0;background:var(--bg-card)}
+details>summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:14.5px;list-style:none;display:flex;gap:8px;align-items:center}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"▸";color:var(--accent);transition:transform .15s}
+details[open]>summary::before{transform:rotate(90deg)}
+details>.body{padding:0 14px 12px}
+.ex{border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin:16px 0;background:var(--bg-card);box-shadow:var(--shadow)}
+.ex h4{margin:0 0 6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lvl{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+.lvl.e{background:var(--ok-soft);color:var(--ok)}.lvl.m{background:var(--warn-soft);color:var(--warn)}.lvl.h{background:var(--bad-soft);color:var(--bad)}
+
+/* quiz */
+.quiz{counter-reset:q}
+.qbox{border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0;background:var(--bg-card)}
+.qbox .qq{font-weight:600;margin-bottom:8px}
+.qbox .opts{display:grid;gap:6px}
+.qbox button.opt{font:inherit;font-size:14.5px;text-align:left;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-soft);color:var(--text);cursor:pointer}
+.qbox button.opt:hover:not(:disabled){border-color:var(--accent)}
+.qbox button.opt.right{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:600}
+.qbox button.opt.wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.qbox .exp{display:none;margin-top:8px;font-size:14px;color:var(--muted)}
+.qbox.done .exp{display:block}
+.score{font-weight:700;color:var(--accent-text)}
+
+/* checklist */
+.check{list-style:none;padding:0}
+.check li{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--border)}
+.check input{margin-top:6px;accent-color:var(--accent);width:16px;height:16px}
+
+/* cheat sheet */
+.tldr{font-size:18px;line-height:1.6;border-radius:14px;padding:18px 22px;background:var(--accent-soft);border:1px solid var(--border);margin:6px 0 30px}
+.tldr-k{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-text);margin-bottom:4px}
+.tl{margin:0 0 10px}
+.tl-step{display:grid;grid-template-columns:40px minmax(0,1fr);gap:16px;position:relative;padding-bottom:26px}
+.tl-step::before{content:"";position:absolute;left:19px;top:42px;bottom:2px;width:2px;background:var(--border)}
+.tl-step:last-child::before{display:none}
+.tl-dot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#1f2328;border:2px solid}
+.tl-body{min-width:0}
+.tl-body h4{margin:7px 0 8px;font-size:17px}
+.say{margin:0;font-size:15.5px}
+.bucket{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 14px;font-size:15px}
+.bucket .bk{font-weight:700;color:var(--accent-text)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:14px;font-weight:600;padding:4px 12px;border-radius:999px;background:var(--bg-soft);border:1px solid var(--border)}
+.chip.hl{background:var(--accent-soft);color:var(--accent-text)}
+pre.tree{font-variant-ligatures:none;margin:0;padding:14px 16px;border-radius:12px;background:var(--code-bg);border:1px solid var(--border);font-size:13.5px;line-height:1.6;overflow:auto}
+.tree .tc{color:var(--tok-com)}
+#revSvg{min-width:0 !important}
+table.traps td:first-child{font-weight:600;width:45%}
+.term{display:block;font-size:12.5px;color:var(--muted)}
+.warm{list-style:none;counter-reset:w;padding:0;margin:8px 0 0}
+.warm li{counter-increment:w;display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;margin:0 0 8px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)}
+.warm li::before{content:counter(w);width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--accent-soft);color:var(--accent-text)}
+.warm li a{font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
+td b{white-space:nowrap}
+.pat{display:grid;gap:8px;margin:10px 0 20px;font-size:15px}
+.pat .tag{display:inline-block;width:64px;text-align:center;margin-right:10px;font-size:11px;font-weight:700;padding:2px 0;border-radius:999px;text-transform:uppercase}
+.fc-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.fc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fc{font:inherit;text-align:left;cursor:pointer;min-height:112px;padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;transition:border-color .15s}
+.fc:hover{border-color:var(--accent)}
+.fc .q{font-weight:600;font-size:15px}
+.fc .q::after{content:"tap to reveal";display:block;margin-top:6px;font-weight:500;font-size:12px;color:var(--muted)}
+.fc .a{display:none;font-size:14.5px;color:var(--text);border-top:1px dashed var(--border);padding-top:8px}
+.fc.open{border-color:var(--ok);background:var(--ok-soft)}
+.fc.open .q::after{display:none}
+.fc.open .a{display:block}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--border);padding-top:16px;margin-top:40px}
+
+/* code explorer */
+.ide{--i-bg:#1e1f22;--i-side:#191a1d;--i-bd:#2e3036;--i-tx:#d5d8dd;--i-mu:#868a91;--i-hl:#2b2d33;
+  display:grid;grid-template-columns:240px minmax(0,1fr);border:1px solid var(--i-bd);border-radius:14px;overflow:hidden;background:var(--i-bg);color:var(--i-tx);margin:18px 0 24px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.ide:fullscreen{border-radius:0;height:100vh}
+.ide-side{background:var(--i-side);border-right:1px solid var(--i-bd);padding:14px 10px;min-width:0}
+.ide-lang{border:1px solid var(--i-bd);border-radius:9px;padding:8px 12px;font-weight:700;font-size:14px;margin-bottom:14px}
+.ide-files{font-weight:700;font-size:14px;padding:4px 6px 10px;border-bottom:1px solid var(--i-bd);margin-bottom:8px}
+.ide-cnt{font-size:11px;background:var(--i-hl);border-radius:999px;padding:1px 8px;margin-left:4px;color:var(--i-mu)}
+.ide-tree{font-size:13.5px}
+.ide-row{display:flex;align-items:center;gap:6px;width:100%;font:inherit;font-size:13.5px;color:var(--i-tx);background:none;border:0;border-radius:7px;padding:5px 8px;cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ide-row:hover{background:var(--i-hl)}
+.ide-row.on{background:#1f3a2c;color:#5fd38d}
+.ide-row .car{display:inline-block;width:10px;color:var(--i-mu);transition:transform .15s}
+.ide-row.open .car{transform:rotate(90deg)}
+.ide-row .mb{margin-left:auto;font-size:10px;font-weight:800;color:#5fd38d;background:#1f3a2c;border:1px solid #2f5a42;border-radius:5px;padding:0 5px}
+.ide-kids{padding-left:14px}
+.ide-kids[hidden]{display:none}
+.ide-main{display:flex;flex-direction:column;min-width:0}
+.ide-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--i-bd)}
+.ide-head b{font-size:15px}
+.ide-fico{color:#5fd38d;font-family:"JetBrains Mono",Consolas,monospace;font-size:12px;font-weight:700}
+.ide-badge{font-size:10px;font-weight:800;color:#5fd38d;background:#1f3a2c;border:1px solid #2f5a42;border-radius:5px;padding:1px 6px}
+.ide-head .sp,.ide-foot .sp{flex:1}
+.ide-ib{background:none;border:1px solid transparent;color:var(--i-mu);font-size:16px;width:32px;height:30px;border-radius:7px;cursor:pointer}
+.ide-ib:hover{border-color:var(--i-bd);color:var(--i-tx)}
+.ide-tabs{display:flex;overflow-x:auto;background:var(--i-side);border-bottom:1px solid var(--i-bd);min-height:36px}
+.ide-tab{display:flex;align-items:center;gap:8px;font:inherit;font-size:13px;color:var(--i-mu);background:none;border:0;border-right:1px solid var(--i-bd);padding:8px 12px;cursor:pointer;white-space:nowrap}
+.ide-tab.on{color:var(--i-tx);background:var(--i-bg);box-shadow:inset 0 2px 0 #5fd38d}
+.ide-tab .x{opacity:.5;font-size:12px}.ide-tab .x:hover{opacity:1}
+.ide-code{display:flex;overflow:auto;height:480px;font-family:"JetBrains Mono",Consolas,monospace;font-size:13.5px;line-height:1.65;font-variant-ligatures:none}
+.ide:fullscreen .ide-code{height:auto;flex:1}
+.ide-gutter{position:sticky;left:0;flex:none;text-align:right;padding:12px 14px 12px 12px;color:#5c6068;background:var(--i-bg);border-right:1px solid var(--i-bd);user-select:none;white-space:pre}
+.ide-code pre{margin:0;padding:12px 18px;overflow:visible;color:var(--i-tx);font-size:inherit;line-height:inherit;flex:1}
+.ide .token.keyword,.ide .token.boolean{color:#cf8e6d}
+.ide .token.string{color:#6aab73}
+.ide .token.function{color:#56a8f5}
+.ide .token.comment{color:#7a7e85}
+.ide .token.number{color:#2aacb8}
+.ide .token.class-name{color:#d5d8dd}
+.ide .token.annotation,.ide .token.punctuation.annotation{color:#b3ae60}
+.ide .token.punctuation,.ide .token.operator{color:#bcbec4}
+.ide-foot{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--i-bd)}
+.ide-otab{font:inherit;font-size:13px;background:none;border:0;color:var(--i-mu);cursor:pointer;padding:4px 8px;border-radius:6px}
+.ide-otab.on{color:var(--i-tx);background:var(--i-hl)}
+.ide-run{font:inherit;font-size:14px;font-weight:700;background:#22a85a;color:#fff;border:0;border-radius:9px;padding:8px 18px;cursor:pointer}
+.ide-run:hover{background:#27bd66}
+.ide-out{border-top:1px solid var(--i-bd);background:#141517}
+.ide-out[hidden]{display:none}
+.ide-outnote{font-size:12px;color:var(--i-mu);padding:8px 14px;border-bottom:1px solid var(--i-bd)}
+.ide-outnote code{background:var(--i-hl);border-color:var(--i-bd);color:var(--i-tx)}
+.ide-out pre{margin:0;max-height:360px;overflow:auto;padding:12px 16px;font-size:12.5px;line-height:1.5;color:#c9ccd1;white-space:pre}
+@media (max-width:760px){
+  .ide{grid-template-columns:1fr}
+  .ide-side{border-right:0;border-bottom:1px solid var(--i-bd)}
+  .ide-tree{max-height:200px;overflow:auto}
+  .ide-code{height:380px}
+}
+.pill.med{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+#stateSvg{max-width:1100px}
+/* vending machine simulator */
+.vmsim{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:22px;margin:16px 0 22px;align-items:start}
+.vm{border:2px solid var(--border);border-radius:16px;padding:14px;background:var(--bg-soft);display:flex;flex-direction:column;gap:12px}
+.vm-screen{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:#14261c;color:#9ef0b5;border-radius:10px;padding:10px 14px;font-family:"JetBrains Mono",Consolas,monospace;font-size:13px}
+.vm-state{font-weight:800;padding:2px 10px;border-radius:999px;background:#2b8a3e;color:#fff;font-size:12px}
+.vm-state[data-s="HAS_MONEY"]{background:#e8590c}.vm-state[data-s="DISPENSING"]{background:#5b5bd6}.vm-state[data-s="MAINTENANCE"]{background:#868e96}
+.vm-bal{margin-left:auto}.vm-bal b{color:#fff}
+.vm-msg{flex-basis:100%;color:#d3f9d8}
+.vm-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.vm-slot{font:inherit;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);cursor:pointer}
+.vm-slot:hover{border-color:var(--accent)}
+.vm-slot.empty{opacity:.55}
+.vm-slot .vm-code{font-family:"JetBrains Mono",Consolas,monospace;font-weight:700;color:var(--muted);font-size:11px}
+.vm-slot .vm-ic{font-size:26px;line-height:1.2}
+.vm-row{display:flex;flex-wrap:wrap;gap:6px}
+.vm [hidden]{display:none}
+.vm-coin{border-radius:999px;font-weight:700;min-width:48px;justify-content:center}
+.vm-coin.note{border-radius:6px}
+.mobile-toc{display:none}
+@media (max-width:1000px){
+  .layout{grid-template-columns:1fr}
+  aside.toc{display:none}
+  main{padding:24px 16px 80px}
+  .mobile-toc{display:block;margin-bottom:20px}
+  .sim,.vmsim{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  h1{font-size:30px} h2{font-size:23px}
+  .grid2,.grid3,.fc-grid,.bucket{grid-template-columns:1fr}
+  .vm-slots{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .warm li{grid-template-columns:34px minmax(0,1fr)}
+  .warm li a{grid-column:2}
+  .topbar .crumb{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">🥤 LLD Notes</div>
+  <div class="crumb">/ Medium / Vending Machine</div>
+  <div class="sp"></div>
+  <button class="btn" id="themeBtn" type="button" aria-label="Toggle theme">◐ Theme</button>
+</div>
+<div class="progress" id="progress"></div>
+
+<div class="layout">
+<aside class="toc" id="toc">
+  <h4>On this page</h4>
+  <a href="#overview"><span class="num">0</span>The problem &amp; flow</a>
+  <a href="#warmup"><span class="num">▶</span>Try it first</a>
+  <a href="#requirements"><span class="num">1</span>Requirement gathering</a>
+  <a href="#entities"><span class="num">2</span>Core entities + breakdown</a>
+  <a href="#classes"><span class="num">3</span>Class diagram</a>
+  <a href="#flow"><span class="num">4</span>States &amp; purchase flow</a>
+  <a href="#code"><span class="num">5</span>Working code</a>
+  <a href="#try"><span class="num">6</span>Run and Test</a>
+  <a href="#patterns"><span class="num">7</span>Design patterns</a>
+  <a href="#similar"><span class="num">8</span>Similar problems</a>
+  <a href="#recap"><span class="num">9</span>Revision cheat sheet</a>
+</aside>
+
+<main>
+<details class="mobile-toc"><summary>Contents</summary><div class="body" id="mtoc"></div></details>
+
+<!-- ============ 0. OVERVIEW ============ -->
+<section id="overview">
+<div class="prose">
+  <h1>Design a Vending Machine</h1>
+  <div class="meta">
+    <span class="pill med">Medium</span>
+    <span class="pill">Java</span>
+    <span class="pill">~25 min read</span>
+    <span class="pill">Code: <code>org.nailyourinterview.lld.vending_machine</code></span>
+  </div>
+  <p class="lead">A vending machine sells snacks from slots. The user inserts coins or notes, picks a product code, and gets the item plus change. The machine must refuse a sold-out item and must not take money it cannot give change for.</p>
+  <p>This is the classic <b>State pattern</b> question. The same button (“select A1”) does different things when the machine is idle, has money, or is dispensing. The second skill it tests is <b>making change</b> from a limited cash box.</p>
+  <p>Every LLD answer follows the same 5 steps. Requirement gathering splits into 3 buckets: <b>extensibility</b>, <b>dynamic input</b> and <b>high traffic</b>. Click a step to jump to it.</p>
+</div>
+<div class="figure" id="figSteps">
+  <div class="fhead"><b>LLD interview flow — applied to Vending Machine</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figSteps">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="stepsSvg" data-name="lld-interview-flow.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="stepsSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-label="LLD interview flow"></svg></div>
+</div>
+</section>
+
+<!-- ============ WARM-UP ============ -->
+<section id="warmup">
+<div class="prose">
+  <h2><span class="secnum">▶</span>Try it first</h2>
+  <p>Before you read the solution, spend 10–15 minutes on your own. Use paper. A wrong first attempt is fine — it makes the answer stick when you read it.</p>
+  <h3>Step 0 · Buy something</h3>
+  <p>Insert money, then click a product. Watch the <b>state</b> badge change. Try the hard cases: pick <b>Water</b> (sold out), pay <b>₹100</b> for a KitKat (the box has too few coins), or press <b>Cancel</b>. The grey line under each log entry shows the method that does the work.</p>
+</div>
+
+<div class="vmsim">
+  <div class="vm">
+    <div class="vm-screen">
+      <span class="vm-state" id="vmState">IDLE</span>
+      <span class="vm-bal">Balance <b id="vmBal">₹0</b></span>
+      <div class="vm-msg" id="vmMsg">Insert money.</div>
+    </div>
+    <div class="vm-slots" id="vmSlots"></div>
+    <div class="vm-row" id="vmCoins"></div>
+    <div class="vm-row">
+      <button class="btn" type="button" id="vmCancel">✕ Cancel</button>
+      <button class="btn" type="button" id="vmMaint">🔧 Maintenance</button>
+      <button class="btn" type="button" id="vmRestock" hidden>+4 Water (B1)</button>
+      <button class="btn" type="button" id="vmReset">↺ Reset</button>
+    </div>
+  </div>
+  <div class="simside">
+    <div class="queue" id="vmBox"></div>
+    <ul class="log" id="log"></ul>
+  </div>
+</div>
+
+<div class="prose">
+  <h3>Now design it yourself</h3>
+  <ol class="warm">
+    <li><span><b>Questions.</b> Write 5 questions you would ask the interviewer.</span><a href="#requirements">compare → 1.1</a></li>
+    <li><span><b>Buckets.</b> Sort the answers into core, extensibility, dynamic input and high traffic.</span><a href="#requirements">compare → 1</a></li>
+    <li><span><b>Entities.</b> List the classes and one job for each.</span><a href="#entities">compare → 2</a></li>
+    <li><span><b>States.</b> Draw the states and the arrows between them. Label each arrow with the action.</span><a href="#flow">compare → 4</a></li>
+    <li><span><b>Select product.</b> Write it in pseudocode. List every way it can fail.</span><a href="#flow">compare → 4</a></li>
+  </ol>
+</div>
+</section>
+
+<!-- ============ 1. REQUIREMENTS ============ -->
+<section id="requirements">
+<div class="prose">
+  <h2><span class="secnum">1</span>Requirement gathering</h2>
+  <p>Do not start with code. Ask questions first. Each answer removes a guess. Then sort the answers into 4 buckets: <b>core</b>, <b>extensibility</b>, <b>dynamic input</b> and <b>high traffic</b>.</p>
+
+  <h3>1.1 Ask questions</h3>
+  <div class="chat">
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>How are products arranged? Can one slot hold many items?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Slots with codes like A1, B2. Each slot holds one product and a count.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>What money does it take?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Coins ₹1, ₹2, ₹5, ₹10 and notes ₹20, ₹50, ₹100.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Does the user pay first, or pick first?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Pay first, then pick. They can add more money if it is not enough.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Does it give change? What if it has no coins for the change?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Yes, from its own cash box. If it cannot make the change, it must not sell. Ask for exact money.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Can the user cancel?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Yes, before the item drops. Return the same coins and notes they put in.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Who refills it?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>An operator, in maintenance mode. The machine does not sell during maintenance.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Card or UPI? Many machines?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Cash only for now. One machine. Keep the design open.</div></div>
+  </div>
+
+  <h3>1.2 Core functional requirements</h3>
+  <ul>
+    <li>Slots with a code, a product (name, price) and a quantity.</li>
+    <li>Accept coins and notes. Keep a running balance.</li>
+    <li>Select a product by code. Reject: unknown code, sold out, not enough money, no change possible.</li>
+    <li>On success: drop the item, return the change, start again.</li>
+    <li>Cancel before dispensing: refund the exact money inserted.</li>
+    <li>Maintenance mode: no sales; the operator can restock.</li>
+  </ul>
+
+  <h3 id="extensibility">1.3 Extensibility (new features)</h3>
+  <p>Ask: <i>“Which features may come next?”</i> You do not build them now. You make sure each one is an <b>addition</b>, not a rewrite. For each feature, name the class that changes and the pattern that keeps the change small.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Follow-up question</th><th>What changes</th><th>Pattern / idea</th></tr></thead>
+    <tbody>
+      <tr><td>Card / UPI payment</td><td><code>PaymentStrategy</code>; a <code>CardPaidState</code> with no change to give</td><td>Strategy + State</td></tr>
+      <tr><td>Better change making (not greedy)</td><td><code>ChangeStrategy</code> inside <code>CashBox</code></td><td>Strategy</td></tr>
+      <tr><td>Pick first, then pay</td><td>New <code>ProductSelectedState</code></td><td>State (one new class)</td></tr>
+      <tr><td>Buy many items in one go</td><td>A cart in the machine; loop in dispensing</td><td>—</td></tr>
+      <tr><td>Discounts, happy hours</td><td><code>PricingStrategy</code> on top of <code>Product.price</code></td><td>Strategy / Decorator</td></tr>
+      <tr><td>Low-stock or low-coin alert to the operator</td><td>Inventory / CashBox fire events</td><td>Observer</td></tr>
+      <tr><td>Fleet of machines, remote stock view</td><td><code>MachineRepository</code>; each machine reports its stock</td><td>Repository</td></tr>
+      <tr><td>Different state objects per model</td><td><code>VendingStateFactory</code></td><td>Factory</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>1.4 Dynamic (user input)</h3>
+  <p>The layout and the cash are not hard-coded in the machine. They come in at runtime:</p>
+  <ul>
+    <li>Slots and products: <code>vm.addSlot(new Slot("A1", new Product("Coke", 25), 5))</code>.</li>
+    <li>Starting cash: <code>vm.loadCash(Denomination.COIN_5, 1)</code>.</li>
+    <li>User input: <code>insertMoney(Denomination.NOTE_20)</code> and <code>selectProduct("A1")</code>, in any order and any number of times.</li>
+  </ul>
+  <div class="callout warn"><b class="t">Validate the input</b>Money is a <code>Denomination</code> enum, so the machine cannot receive a ₹3 coin. Prices are <code>int</code> rupees — never <code>double</code> for money. An unknown slot code is rejected. Negative restock counts are not checked today — add a guard.</div>
+
+  <h3>1.5 High traffic (concurrency)</h3>
+  <p><b>Not needed here.</b> One physical machine serves one user at a time. All calls come from one keypad, one after another. Say this out loud, so the interviewer knows you checked.</p>
+  <p>If they ask: a mobile app and the keypad may hit the same machine at once. Make the four public actions <code>synchronized</code>, or push every action into one event queue that a single thread handles. For a fleet, each machine owns its own state; only stock reports go to a server.</p>
+
+  <h3>1.6 Non-functional requirements</h3>
+  <ul>
+    <li><b>Correct money</b> — never lose or invent a rupee. Refund the exact coins.</li>
+    <li><b>Readable</b> — no big <code>switch (status)</code> in every method.</li>
+    <li><b>Extensible</b> — a new state or payment type is a new class.</li>
+  </ul>
+  <div class="callout tip"><b class="t">Interview tip</b>Draw the state diagram <b>before</b> the class diagram. Once the states and arrows are right, the classes follow.</div>
+</div>
+</section>
+
+<!-- ============ 2. ENTITIES ============ -->
+<section id="entities">
+<div class="prose">
+  <h2><span class="secnum">2</span>Core entities + breakdown</h2>
+  <p>Read the requirements again. Underline the nouns. Most nouns become classes. Verbs become methods.</p>
+  <div class="callout">
+    A <span class="noun">vending machine</span> has <span class="noun">slots</span>. Each slot holds a <span class="noun">product</span> with a <span class="noun">price</span>.
+    The user <i>inserts</i> <span class="noun">coins</span> and <span class="noun">notes</span>, <i>selects</i> a slot code and gets the item and <span class="noun">change</span> from the <span class="noun">cash box</span>. The machine is <span class="noun">idle</span>, <span class="noun">has money</span>, is <span class="noun">dispensing</span> or is in <span class="noun">maintenance</span>.
+  </div>
+  <p>The last sentence is the key. “Idle”, “has money” and “dispensing” are <b>states</b>. Each state handles the same 4 actions in its own way. So each state becomes a class.</p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Entity</th><th>Type</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td><b>VendingMachine</b></td><td>Service / context</td><td>Holds inventory, cash box, inserted money and the current state. Forwards every user action to the state.</td></tr>
+      <tr><td><b>VendingState</b></td><td>Interface</td><td><code>insertMoney</code>, <code>selectProduct</code>, <code>dispense</code>, <code>cancel</code>, <code>getStatus</code>.</td></tr>
+      <tr><td><b>IdleState</b> / <b>HasMoneyState</b> / <b>DispensingState</b> / <b>MaintenanceState</b></td><td>State</td><td>One class per state. Does the work for that state and moves the machine to the next one.</td></tr>
+      <tr><td><b>Inventory</b></td><td>Model</td><td>Slots by code. Add, look up, restock.</td></tr>
+      <tr><td><b>Slot</b></td><td>Model</td><td>Code, product, quantity. <code>isEmpty</code>, <code>decrement</code>, <code>restock</code>.</td></tr>
+      <tr><td><b>Product</b></td><td>Model</td><td>Name and price (int rupees).</td></tr>
+      <tr><td><b>CashBox</b></td><td>Model</td><td>Count of each denomination. Checks and makes change.</td></tr>
+      <tr><td><b>Denomination</b></td><td>Enum</td><td>COIN_1 … NOTE_100, each with a value.</td></tr>
+      <tr><td><b>MachineStatus</b></td><td>Enum</td><td>IDLE, HAS_MONEY, DISPENSING, MAINTENANCE — a label for each state.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn"><b class="t">Common mistake</b>Do not write <code>if (status == IDLE) … else if (status == HAS_MONEY) …</code> inside every method of <code>VendingMachine</code>. With 4 states × 4 actions that is 16 branches, and a new state edits all of them. One class per state keeps each branch in one place.</div>
+</div>
+</section>
+
+<!-- ============ 3. CLASSES ============ -->
+<section id="classes">
+<div class="prose">
+  <h2><span class="secnum">3</span>Class diagram</h2>
+  <p>Read it from the centre: <b>VendingMachine</b> has an <b>Inventory</b> and a <b>CashBox</b>, and has a current <b>VendingState</b>. The four state classes on the right are the State pattern.</p>
+</div>
+
+<div class="figure" id="figClass">
+  <div class="fhead"><b>Class diagram</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figClass">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="classSvg" data-name="vending-machine-class-diagram.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="classSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1130" role="img" aria-label="Class diagram of Vending Machine"></svg></div>
+  <div class="cap">Read each line as a sentence: “VendingMachine <b>has a</b> CashBox”, “IdleState <b>is a</b> VendingState”, “Inventory <b>has many</b> Slots”.</div>
+</div>
+
+<div class="prose">
+  <h3>Relationships, one by one</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>From → To</th><th>Relationship</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>VendingMachine → Inventory</td><td><b>has a</b> <span class="term">composition</span></td><td>Created in the field initialiser. Same lifetime as the machine.</td></tr>
+      <tr><td>VendingMachine → CashBox</td><td><b>has a</b> <span class="term">composition</span></td><td>Same as above.</td></tr>
+      <tr><td>VendingMachine → VendingState</td><td><b>has a</b> <span class="term">aggregation</span></td><td>The current state. It is replaced on every transition.</td></tr>
+      <tr><td>VendingMachine → Slot</td><td><b>may have 1</b> <span class="term">association</span></td><td><code>selectedSlot</code>, set only while dispensing.</td></tr>
+      <tr><td>Inventory → Slot</td><td><b>has many</b> <span class="term">aggregation</span></td><td>Slots are created in <code>Main</code> and added.</td></tr>
+      <tr><td>Slot → Product</td><td><b>has a</b> <span class="term">aggregation</span></td><td>The product is created outside.</td></tr>
+      <tr><td>Idle/HasMoney/Dispensing/MaintenanceState → VendingState</td><td><b>is a</b> <span class="term">realization</span></td><td>Each one implements the interface.</td></tr>
+      <tr><td>Each state → VendingMachine</td><td><b>uses</b> <span class="term">association</span></td><td>Each state keeps a reference back to the machine, to read data and call <code>setState</code>.</td></tr>
+      <tr><td>CashBox → Denomination</td><td><b>uses</b> <span class="term">dependency</span></td><td><code>EnumMap&lt;Denomination, Integer&gt;</code> of counts.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout info"><b class="t">Two-way link</b>The machine knows its state, and the state knows the machine. That cycle is normal in the State pattern: the state needs the machine to change it to the next state.</div>
+</div>
+</section>
+
+<!-- ============ 4. FLOW ============ -->
+<section id="flow">
+<div class="prose">
+  <h2><span class="secnum">4</span>States and the purchase flow</h2>
+  <p>First the <b>state diagram</b>: which action moves the machine from one state to the next. Then the <b>flowchart</b> of the busiest method, <code>HasMoneyState.selectProduct()</code>.</p>
+</div>
+<div class="figure" id="figState">
+  <div class="fhead"><b>State diagram</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figState">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="stateSvg" data-name="vending-machine-states.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="stateSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 545" role="img" aria-label="State diagram"></svg></div>
+  <div class="cap">Any action not drawn here is <b>rejected with a message</b> by the current state, for example <code>selectProduct</code> in IDLE prints “Insert money first.”</div>
+</div>
+<div class="figure" id="figFlow">
+  <div class="fhead"><b>selectProduct() flowchart</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figFlow">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="flowSvg" data-name="vending-machine-select-flow.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="flowSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960" role="img" aria-label="Flowchart of selectProduct"></svg></div>
+  <div class="cap">Four checks, cheapest first. Each failure leaves the machine in HAS_MONEY, so the user can add money, pick again or cancel.</div>
+</div>
+</section>
+
+<!-- ============ 5. CODE ============ -->
+<section id="code">
+<div class="prose">
+  <h2><span class="secnum">5</span>Working code</h2>
+  <p>Build bottom-up: enums, then <code>Product</code>, <code>Slot</code>, <code>Inventory</code>, <code>CashBox</code>, then the states, then <code>VendingMachine</code>. The code uses Lombok (<code>@Getter</code>, <code>@AllArgsConstructor</code>) to remove boilerplate.</p>
+
+  <h3>5.1 Enums</h3>
+<div class="code"><div class="chead"><span>enums/Denomination.java · enums/MachineStatus.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@Getter
+@AllArgsConstructor
+public enum Denomination {
+    COIN_1(1), COIN_2(2), COIN_5(5), COIN_10(10),
+    NOTE_20(20), NOTE_50(50), NOTE_100(100);
+
+    private final int value;
+}
+
+public enum MachineStatus {
+    IDLE, HAS_MONEY, DISPENSING, MAINTENANCE
+}</code></pre></div>
+  <p class="why">Money as an enum: the machine cannot receive a coin that does not exist. Declared in ascending order, so <code>CashBox</code> can walk it from the back for “largest first”.</p>
+
+  <h3>5.2 Product, Slot, Inventory</h3>
+<div class="code"><div class="chead"><span>model/Product.java · model/Slot.java · model/Inventory.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@Getter
+@AllArgsConstructor
+public class Product {
+    private final String name;
+    private final int price;          // whole rupees, never double
+}
+
+@Getter
+@AllArgsConstructor
+public class Slot {
+    private final String code;
+    private final Product product;
+    private int quantity;
+
+    public boolean isEmpty() { return quantity == 0; }
+
+    public void decrement() {
+        if (quantity == 0) throw new IllegalStateException("Slot " + code + " is empty");
+        quantity--;
+    }
+
+    public void restock(int count) { quantity += count; }
+}
+
+public class Inventory {
+    private final Map&lt;String, Slot&gt; slots = new LinkedHashMap&lt;&gt;();
+
+    public void addSlot(Slot slot) { slots.put(slot.getCode(), slot); }
+    public Slot getSlot(String code) { return slots.get(code); }
+
+    public void restock(String code, int count) {
+        Slot slot = slots.get(code);
+        if (slot == null) { System.out.println("No slot " + code); return; }
+        slot.restock(count);
+    }
+}</code></pre></div>
+
+  <h3>5.3 CashBox — making change</h3>
+<div class="code"><div class="chead"><span>model/CashBox.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public class CashBox {
+    private final Map&lt;Denomination, Integer&gt; counts = new EnumMap&lt;&gt;(Denomination.class);
+
+    public CashBox() {
+        for (Denomination d : Denomination.values()) counts.put(d, 0);
+    }
+
+    public void add(Denomination d, int count) { counts.merge(d, count, Integer::sum); }
+    public void addAll(List&lt;Denomination&gt; money) { money.forEach(d -&gt; add(d, 1)); }
+    public void removeAll(List&lt;Denomination&gt; money) { money.forEach(d -&gt; add(d, -1)); }
+
+    public boolean canMakeChange(int amount) { return plan(amount) != null; }
+
+    public Map&lt;Denomination, Integer&gt; makeChange(int amount) {
+        Map&lt;Denomination, Integer&gt; change = plan(amount);
+        if (change == null) throw new IllegalStateException("Cannot make change for " + amount);
+        change.forEach((d, n) -&gt; add(d, -n));        // take the coins out of the box
+        return change;
+    }
+
+    // Greedy: largest denomination first, limited by what is in the box
+    private Map&lt;Denomination, Integer&gt; plan(int amount) {
+        Map&lt;Denomination, Integer&gt; change = new LinkedHashMap&lt;&gt;();
+        Denomination[] all = Denomination.values();
+        for (int i = all.length - 1; i &gt;= 0 &amp;&amp; amount &gt; 0; i--) {
+            Denomination d = all[i];
+            int use = Math.min(amount / d.getValue(), counts.get(d));
+            if (use &gt; 0) {
+                change.put(d, use);
+                amount -= use * d.getValue();
+            }
+        }
+        return amount == 0 ? change : null;
+    }
+}</code></pre></div>
+  <p class="why"><b>Check, then act.</b> <code>canMakeChange</code> and <code>makeChange</code> share one <code>plan()</code>, so the check and the real payout always agree. <b>Limit:</b> greedy with limited coins can miss an answer. ₹6 with one ₹5 and three ₹2 coins: greedy takes ₹5, then needs ₹1 and fails; 2 + 2 + 2 works. Fix with a short backtracking search (see §7).</p>
+
+  <h3>5.4 VendingState — the contract</h3>
+<div class="code"><div class="chead"><span>state/VendingState.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public interface VendingState {
+    void insertMoney(Denomination money);
+    void selectProduct(String code);
+    void dispense();
+    void cancel();
+    MachineStatus getStatus();
+}</code></pre></div>
+
+  <h3>5.5 IdleState</h3>
+<div class="code"><div class="chead"><span>state/IdleState.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@AllArgsConstructor
+public class IdleState implements VendingState {
+    private final VendingMachine machine;
+
+    @Override
+    public void insertMoney(Denomination money) {
+        machine.addMoney(money);
+        System.out.println("Inserted ₹" + money.getValue() + ". Balance: ₹" + machine.getBalance());
+        machine.setState(new HasMoneyState(machine));          // IDLE → HAS_MONEY
+    }
+
+    @Override public void selectProduct(String code) { System.out.println("Insert money first."); }
+    @Override public void dispense() { System.out.println("Insert money and select a product first."); }
+    @Override public void cancel() { System.out.println("Nothing to cancel."); }
+    @Override public MachineStatus getStatus() { return MachineStatus.IDLE; }
+}</code></pre></div>
+
+  <h3>5.6 HasMoneyState — the busy one</h3>
+<div class="code"><div class="chead"><span>state/HasMoneyState.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@AllArgsConstructor
+public class HasMoneyState implements VendingState {
+    private final VendingMachine machine;
+
+    @Override
+    public void insertMoney(Denomination money) {
+        machine.addMoney(money);                                // stay in HAS_MONEY
+        System.out.println("Inserted ₹" + money.getValue() + ". Balance: ₹" + machine.getBalance());
+    }
+
+    @Override
+    public void selectProduct(String code) {
+        Slot slot = machine.getInventory().getSlot(code);
+        if (slot == null) { System.out.println("Invalid code " + code + "."); return; }
+        if (slot.isEmpty()) {
+            System.out.println(slot.getProduct().getName() + " is sold out. Pick another or cancel.");
+            return;
+        }
+
+        int price = slot.getProduct().getPrice();
+        int balance = machine.getBalance();
+        if (balance &lt; price) {
+            System.out.println(slot.getProduct().getName() + " costs ₹" + price + ". Insert ₹" + (price - balance) + " more.");
+            return;
+        }
+
+        // The inserted money can be part of the change, so add it to the box before checking
+        CashBox cashBox = machine.getCashBox();
+        cashBox.addAll(machine.getInsertedMoney());
+        if (!cashBox.canMakeChange(balance - price)) {
+            cashBox.removeAll(machine.getInsertedMoney());     // undo: refund stays possible
+            System.out.println("Cannot return ₹" + (balance - price) + " change. Insert exact amount or cancel.");
+            return;
+        }
+
+        machine.setSelectedSlot(slot);
+        machine.setState(new DispensingState(machine));         // HAS_MONEY → DISPENSING
+        machine.dispense();
+    }
+
+    @Override public void dispense() { System.out.println("Select a product first."); }
+
+    @Override
+    public void cancel() {
+        System.out.println("Cancelled. Refund: " + machine.getInsertedMoney());
+        machine.resetTransaction();
+        machine.setState(new IdleState(machine));               // HAS_MONEY → IDLE
+    }
+
+    @Override public MachineStatus getStatus() { return MachineStatus.HAS_MONEY; }
+}</code></pre></div>
+  <p class="why"><b>Why add the inserted money first?</b> The user’s own coins can be part of the change for the same sale. Price ₹25; the user inserts ₹10, ₹10, ₹10, ₹2, ₹2 (₹34), so the change is ₹9. The box holds only one ₹5 coin. With the user’s two ₹2 coins added, 5 + 2 + 2 = 9 works. If the check fails, the coins come out again, so <code>cancel</code> still refunds the exact money.</p>
+
+  <h3>5.7 DispensingState and MaintenanceState</h3>
+<div class="code"><div class="chead"><span>state/DispensingState.java · state/MaintenanceState.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@AllArgsConstructor
+public class DispensingState implements VendingState {
+    private final VendingMachine machine;
+
+    @Override
+    public void dispense() {
+        Slot slot = machine.getSelectedSlot();
+        int change = machine.getBalance() - slot.getProduct().getPrice();
+
+        slot.decrement();
+        System.out.println("Dispensed " + slot.getProduct().getName() + ".");
+
+        if (change &gt; 0) {
+            Map&lt;Denomination, Integer&gt; coins = machine.getCashBox().makeChange(change);
+            System.out.println("Change ₹" + change + ": " + coins);
+        }
+
+        machine.resetTransaction();
+        machine.setState(new IdleState(machine));               // DISPENSING → IDLE
+    }
+
+    @Override public void insertMoney(Denomination money) { System.out.println("Dispensing. Please wait."); }
+    @Override public void selectProduct(String code) { System.out.println("Dispensing. Please wait."); }
+    @Override public void cancel() { System.out.println("Too late to cancel. Dispensing."); }
+    @Override public MachineStatus getStatus() { return MachineStatus.DISPENSING; }
+}
+
+@AllArgsConstructor
+public class MaintenanceState implements VendingState {
+    private final VendingMachine machine;
+
+    @Override
+    public void insertMoney(Denomination money) {
+        System.out.println("Out of service. ₹" + money.getValue() + " returned.");
+    }
+    @Override public void selectProduct(String code) { System.out.println("Out of service."); }
+    @Override public void dispense() { System.out.println("Out of service."); }
+    @Override public void cancel() { System.out.println("Out of service."); }
+    @Override public MachineStatus getStatus() { return MachineStatus.MAINTENANCE; }
+}</code></pre></div>
+
+  <h3>5.8 VendingMachine — the context</h3>
+<div class="code"><div class="chead"><span>service/VendingMachine.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@Getter
+public class VendingMachine {
+    private final String id;
+    private final Inventory inventory = new Inventory();
+    private final CashBox cashBox = new CashBox();
+    private final List&lt;Denomination&gt; insertedMoney = new ArrayList&lt;&gt;();
+    @Setter private VendingState state;
+    @Setter private Slot selectedSlot;
+
+    public VendingMachine(String id) {
+        this.id = id;
+        this.state = new IdleState(this);
+    }
+
+    // user actions: the current state decides what happens
+    public void insertMoney(Denomination money) { state.insertMoney(money); }
+    public void selectProduct(String code)      { state.selectProduct(code); }
+    public void dispense()                      { state.dispense(); }
+    public void cancel()                        { state.cancel(); }
+
+    // operator actions
+    public void startMaintenance() {
+        if (state.getStatus() != MachineStatus.IDLE) {
+            System.out.println("Finish the current transaction first.");
+            return;
+        }
+        System.out.println("Maintenance started.");
+        state = new MaintenanceState(this);
+    }
+
+    public void endMaintenance() {
+        if (state.getStatus() != MachineStatus.MAINTENANCE) return;
+        System.out.println("Maintenance finished.");
+        state = new IdleState(this);
+    }
+
+    public void restock(String code, int count) {
+        if (state.getStatus() != MachineStatus.MAINTENANCE) {
+            System.out.println("Restock only in maintenance mode.");
+            return;
+        }
+        inventory.restock(code, count);
+        System.out.println("Restocked " + code + " +" + count + ".");
+    }
+
+    public void addSlot(Slot slot) { inventory.addSlot(slot); }
+    public void loadCash(Denomination d, int count) { cashBox.add(d, count); }
+
+    // helpers used by the states
+    public void addMoney(Denomination money) { insertedMoney.add(money); }
+    public int getBalance() { return insertedMoney.stream().mapToInt(Denomination::getValue).sum(); }
+    public void resetTransaction() { insertedMoney.clear(); selectedSlot = null; }
+    public MachineStatus getStatus() { return state.getStatus(); }
+}</code></pre></div>
+  <p class="why">The four user methods are one line each. That is the sign the State pattern is working. The machine keeps <b>the list of inserted coins</b>, not just a number, so a refund returns the same coins.</p>
+
+  <h3>5.9 Main — the client</h3>
+<div class="code"><div class="chead"><span>Main.java (part)</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">VendingMachine vm = new VendingMachine("VM1");
+vm.addSlot(new Slot("A1", new Product("Coke", 25), 5));
+vm.addSlot(new Slot("A2", new Product("Lays", 20), 3));
+vm.addSlot(new Slot("B1", new Product("Water", 15), 0));   // sold out
+vm.addSlot(new Slot("B2", new Product("KitKat", 30), 2));
+
+vm.loadCash(Denomination.COIN_1, 2);
+vm.loadCash(Denomination.COIN_2, 2);
+vm.loadCash(Denomination.COIN_5, 1);
+
+vm.insertMoney(Denomination.NOTE_20);
+vm.insertMoney(Denomination.COIN_10);
+vm.selectProduct("A1");                 // Coke, change ₹5
+
+vm.insertMoney(Denomination.NOTE_100);
+vm.selectProduct("B2");                 // cannot return ₹70
+vm.cancel();                            // refund [NOTE_100]</code></pre></div>
+</div>
+</section>
+
+<!-- ============ 6. RUN AND TEST ============ -->
+<section id="try">
+<div class="prose">
+  <h2><span class="secnum">6</span>Run and Test</h2>
+  <p>The full <code>vending_machine</code> package, file by file. Click a file to open it. Start with <b>Main.java</b>, then follow the calls: <code>VendingMachine</code> → <code>HasMoneyState</code> → <code>CashBox</code> → <code>DispensingState</code>.
+  <a href="https://github.com/harikrishna8121999/Low-Level-Design/tree/main/src/main/java/org/nailyourinterview/lld/vending_machine" target="_blank" rel="noopener">Open on GitHub ↗</a> <span style="color:var(--muted)">(after you push it)</span></p>
+</div>
+
+<div class="ide" id="ide">
+  <aside class="ide-side">
+    <div class="ide-lang">☕ Java</div>
+    <div class="ide-files">📁 Files <span class="ide-cnt" id="ideCnt"></span></div>
+    <div class="ide-tree" id="ideTree"></div>
+  </aside>
+  <div class="ide-main">
+    <div class="ide-head">
+      <span class="ide-fico">{ }</span><b id="ideTitle"></b><span class="ide-badge" id="ideBadge">MAIN</span>
+      <span class="sp"></span>
+      <button class="ide-ib" type="button" id="ideCopy" title="Copy file">⧉</button>
+      <button class="ide-ib" type="button" id="ideFs" title="Full screen">⤢</button>
+    </div>
+    <div class="ide-tabs" id="ideTabs"></div>
+    <div class="ide-code" id="ideScroll"><div class="ide-gutter" id="ideGutter"></div><pre><code class="language-java" id="ideCode"></code></pre></div>
+    <div class="ide-foot">
+      <button class="ide-otab" type="button" id="ideOutTab">Output</button>
+      <span class="sp"></span>
+      <button class="ide-run" type="button" id="ideRun">▶ Run</button>
+    </div>
+    <div class="ide-out" id="ideOut" hidden>
+      <div class="ide-outnote">Recorded run of <code>Main</code> on JDK 21 (a browser cannot run Java). Seven scenarios: a normal sale, select before paying, top-up, sold out + cancel, no change possible, maintenance, restocked sale.</div>
+      <pre id="ideOutPre"></pre>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="repoFiles">{"files": [{"path": "enums/Denomination.java", "code": "package org.nailyourinterview.lld.vending_machine.enums;\n\nimport lombok.AllArgsConstructor;\nimport lombok.Getter;\n\n@Getter\n@AllArgsConstructor\npublic enum Denomination {\n    COIN_1(1),\n    COIN_2(2),\n    COIN_5(5),\n    COIN_10(10),\n    NOTE_20(20),\n    NOTE_50(50),\n    NOTE_100(100);\n\n    private final int value;\n}\n"}, {"path": "enums/MachineStatus.java", "code": "package org.nailyourinterview.lld.vending_machine.enums;\n\npublic enum MachineStatus {\n    IDLE,\n    HAS_MONEY,\n    DISPENSING,\n    MAINTENANCE\n}\n"}, {"path": "model/CashBox.java", "code": "package org.nailyourinterview.lld.vending_machine.model;\n\nimport org.nailyourinterview.lld.vending_machine.enums.Denomination;\n\nimport java.util.EnumMap;\nimport java.util.LinkedHashMap;\nimport java.util.List;\nimport java.util.Map;\n\npublic class CashBox {\n    private final Map<Denomination, Integer> counts = new EnumMap<>(Denomination.class);\n\n    public CashBox() {\n        for (Denomination d : Denomination.values()) counts.put(d, 0);\n    }\n\n    public void add(Denomination d, int count) {\n        counts.merge(d, count, Integer::sum);\n    }\n\n    public void addAll(List<Denomination> money) {\n        money.forEach(d -> add(d, 1));\n    }\n\n    public void removeAll(List<Denomination> money) {\n        money.forEach(d -> add(d, -1));\n    }\n\n    public boolean canMakeChange(int amount) {\n        return plan(amount) != null;\n    }\n\n    // Removes the coins/notes from the box and returns them\n    public Map<Denomination, Integer> makeChange(int amount) {\n        Map<Denomination, Integer> change = plan(amount);\n        if (change == null) throw new IllegalStateException(\"Cannot make change for \" + amount);\n        change.forEach((d, n) -> add(d, -n));\n        return change;\n    }\n\n    // Greedy: largest denomination first, limited by what is in the box\n    private Map<Denomination, Integer> plan(int amount) {\n        Map<Denomination, Integer> change = new LinkedHashMap<>();\n        Denomination[] all = Denomination.values();\n        for (int i = all.length - 1; i >= 0 && amount > 0; i--) {\n            Denomination d = all[i];\n            int use = Math.min(amount / d.getValue(), counts.get(d));\n            if (use > 0) {\n                change.put(d, use);\n                amount -= use * d.getValue();\n            }\n        }\n        return amount == 0 ? change : null;\n    }\n}\n"}, {"path": "model/Inventory.java", "code": "package org.nailyourinterview.lld.vending_machine.model;\n\nimport java.util.LinkedHashMap;\nimport java.util.Map;\n\npublic class Inventory {\n    private final Map<String, Slot> slots = new LinkedHashMap<>();\n\n    public void addSlot(Slot slot) {\n        slots.put(slot.getCode(), slot);\n    }\n\n    public Slot getSlot(String code) {\n        return slots.get(code);\n    }\n\n    public void restock(String code, int count) {\n        Slot slot = slots.get(code);\n        if (slot == null) {\n            System.out.println(\"No slot \" + code);\n            return;\n        }\n        slot.restock(count);\n    }\n\n    public void print() {\n        slots.values().forEach(s -> System.out.println(\" \" + s.getCode() + \" \" + s.getProduct().getName()\n                + \" ₹\" + s.getProduct().getPrice() + \" x\" + s.getQuantity()));\n    }\n}\n"}, {"path": "model/Product.java", "code": "package org.nailyourinterview.lld.vending_machine.model;\n\nimport lombok.AllArgsConstructor;\nimport lombok.Getter;\n\n@Getter\n@AllArgsConstructor\npublic class Product {\n    private final String name;\n    private final int price;\n}\n"}, {"path": "model/Slot.java", "code": "package org.nailyourinterview.lld.vending_machine.model;\n\nimport lombok.AllArgsConstructor;\nimport lombok.Getter;\n\n@Getter\n@AllArgsConstructor\npublic class Slot {\n    private final String code;\n    private final Product product;\n    private int quantity;\n\n    public boolean isEmpty() {\n        return quantity == 0;\n    }\n\n    public void decrement() {\n        if (quantity == 0) throw new IllegalStateException(\"Slot \" + code + \" is empty\");\n        quantity--;\n    }\n\n    public void restock(int count) {\n        quantity += count;\n    }\n}\n"}, {"path": "service/VendingMachine.java", "code": "package org.nailyourinterview.lld.vending_machine.service;\n\nimport lombok.Getter;\nimport lombok.Setter;\nimport org.nailyourinterview.lld.vending_machine.enums.Denomination;\nimport org.nailyourinterview.lld.vending_machine.enums.MachineStatus;\nimport org.nailyourinterview.lld.vending_machine.model.CashBox;\nimport org.nailyourinterview.lld.vending_machine.model.Inventory;\nimport org.nailyourinterview.lld.vending_machine.model.Slot;\nimport org.nailyourinterview.lld.vending_machine.state.IdleState;\nimport org.nailyourinterview.lld.vending_machine.state.MaintenanceState;\nimport org.nailyourinterview.lld.vending_machine.state.VendingState;\n\nimport java.util.ArrayList;\nimport java.util.List;\n\n@Getter\npublic class VendingMachine {\n    private final String id;\n    private final Inventory inventory = new Inventory();\n    private final CashBox cashBox = new CashBox();\n    private final List<Denomination> insertedMoney = new ArrayList<>();\n    @Setter private VendingState state;\n    @Setter private Slot selectedSlot;\n\n    public VendingMachine(String id) {\n        this.id = id;\n        this.state = new IdleState(this);\n    }\n\n    // ----- user actions: the current state decides what happens -----\n\n    public void insertMoney(Denomination money) {\n        state.insertMoney(money);\n    }\n\n    public void selectProduct(String code) {\n        state.selectProduct(code);\n    }\n\n    public void dispense() {\n        state.dispense();\n    }\n\n    public void cancel() {\n        state.cancel();\n    }\n\n    // ----- operator actions -----\n\n    public void startMaintenance() {\n        if (state.getStatus() != MachineStatus.IDLE) {\n            System.out.println(\"Finish the current transaction first.\");\n            return;\n        }\n        System.out.println(\"Maintenance started.\");\n        state = new MaintenanceState(this);\n    }\n\n    public void endMaintenance() {\n        if (state.getStatus() != MachineStatus.MAINTENANCE) return;\n        System.out.println(\"Maintenance finished.\");\n        state = new IdleState(this);\n    }\n\n    public void addSlot(Slot slot) {\n        inventory.addSlot(slot);\n    }\n\n    public void restock(String code, int count) {\n        if (state.getStatus() != MachineStatus.MAINTENANCE) {\n            System.out.println(\"Restock only in maintenance mode.\");\n            return;\n        }\n        inventory.restock(code, count);\n        System.out.println(\"Restocked \" + code + \" +\" + count + \".\");\n    }\n\n    public void loadCash(Denomination d, int count) {\n        cashBox.add(d, count);\n    }\n\n    // ----- helpers used by the states -----\n\n    public void addMoney(Denomination money) {\n        insertedMoney.add(money);\n    }\n\n    public int getBalance() {\n        return insertedMoney.stream().mapToInt(Denomination::getValue).sum();\n    }\n\n    public void resetTransaction() {\n        insertedMoney.clear();\n        selectedSlot = null;\n    }\n\n    public MachineStatus getStatus() {\n        return state.getStatus();\n    }\n}\n"}, {"path": "state/DispensingState.java", "code": "package org.nailyourinterview.lld.vending_machine.state;\n\nimport lombok.AllArgsConstructor;\nimport org.nailyourinterview.lld.vending_machine.enums.Denomination;\nimport org.nailyourinterview.lld.vending_machine.enums.MachineStatus;\nimport org.nailyourinterview.lld.vending_machine.model.Slot;\nimport org.nailyourinterview.lld.vending_machine.service.VendingMachine;\n\nimport java.util.Map;\n\n@AllArgsConstructor\npublic class DispensingState implements VendingState {\n    private final VendingMachine machine;\n\n    @Override\n    public void insertMoney(Denomination money) {\n        System.out.println(\"Dispensing. Please wait.\");\n    }\n\n    @Override\n    public void selectProduct(String code) {\n        System.out.println(\"Dispensing. Please wait.\");\n    }\n\n    @Override\n    public void dispense() {\n        Slot slot = machine.getSelectedSlot();\n        int change = machine.getBalance() - slot.getProduct().getPrice();\n\n        slot.decrement();\n        System.out.println(\"Dispensed \" + slot.getProduct().getName() + \".\");\n\n        if (change > 0) {\n            Map<Denomination, Integer> coins = machine.getCashBox().makeChange(change);\n            System.out.println(\"Change ₹\" + change + \": \" + coins);\n        }\n\n        machine.resetTransaction();\n        machine.setState(new IdleState(machine));\n    }\n\n    @Override\n    public void cancel() {\n        System.out.println(\"Too late to cancel. Dispensing.\");\n    }\n\n    @Override\n    public MachineStatus getStatus() {\n        return MachineStatus.DISPENSING;\n    }\n}\n"}, {"path": "state/HasMoneyState.java", "code": "package org.nailyourinterview.lld.vending_machine.state;\n\nimport lombok.AllArgsConstructor;\nimport org.nailyourinterview.lld.vending_machine.enums.Denomination;\nimport org.nailyourinterview.lld.vending_machine.enums.MachineStatus;\nimport org.nailyourinterview.lld.vending_machine.model.CashBox;\nimport org.nailyourinterview.lld.vending_machine.model.Slot;\nimport org.nailyourinterview.lld.vending_machine.service.VendingMachine;\n\n@AllArgsConstructor\npublic class HasMoneyState implements VendingState {\n    private final VendingMachine machine;\n\n    @Override\n    public void insertMoney(Denomination money) {\n        machine.addMoney(money);\n        System.out.println(\"Inserted ₹\" + money.getValue() + \". Balance: ₹\" + machine.getBalance());\n    }\n\n    @Override\n    public void selectProduct(String code) {\n        Slot slot = machine.getInventory().getSlot(code);\n        if (slot == null) {\n            System.out.println(\"Invalid code \" + code + \".\");\n            return;\n        }\n        if (slot.isEmpty()) {\n            System.out.println(slot.getProduct().getName() + \" is sold out. Pick another or cancel.\");\n            return;\n        }\n\n        int price = slot.getProduct().getPrice();\n        int balance = machine.getBalance();\n        if (balance < price) {\n            System.out.println(slot.getProduct().getName() + \" costs ₹\" + price + \". Insert ₹\" + (price - balance) + \" more.\");\n            return;\n        }\n\n        // The inserted money can be part of the change, so add it to the box before checking\n        CashBox cashBox = machine.getCashBox();\n        cashBox.addAll(machine.getInsertedMoney());\n        if (!cashBox.canMakeChange(balance - price)) {\n            cashBox.removeAll(machine.getInsertedMoney());\n            System.out.println(\"Cannot return ₹\" + (balance - price) + \" change. Insert exact amount or cancel.\");\n            return;\n        }\n\n        machine.setSelectedSlot(slot);\n        machine.setState(new DispensingState(machine));\n        machine.dispense();\n    }\n\n    @Override\n    public void dispense() {\n        System.out.println(\"Select a product first.\");\n    }\n\n    @Override\n    public void cancel() {\n        System.out.println(\"Cancelled. Refund: \" + machine.getInsertedMoney());\n        machine.resetTransaction();\n        machine.setState(new IdleState(machine));\n    }\n\n    @Override\n    public MachineStatus getStatus() {\n        return MachineStatus.HAS_MONEY;\n    }\n}\n"}, {"path": "state/IdleState.java", "code": "package org.nailyourinterview.lld.vending_machine.state;\n\nimport lombok.AllArgsConstructor;\nimport org.nailyourinterview.lld.vending_machine.enums.Denomination;\nimport org.nailyourinterview.lld.vending_machine.enums.MachineStatus;\nimport org.nailyourinterview.lld.vending_machine.service.VendingMachine;\n\n@AllArgsConstructor\npublic class IdleState implements VendingState {\n    private final VendingMachine machine;\n\n    @Override\n    public void insertMoney(Denomination money) {\n        machine.addMoney(money);\n        System.out.println(\"Inserted ₹\" + money.getValue() + \". Balance: ₹\" + machine.getBalance());\n        machine.setState(new HasMoneyState(machine));\n    }\n\n    @Override\n    public void selectProduct(String code) {\n        System.out.println(\"Insert money first.\");\n    }\n\n    @Override\n    public void dispense() {\n        System.out.println(\"Insert money and select a product first.\");\n    }\n\n    @Override\n    public void cancel() {\n        System.out.println(\"Nothing to cancel.\");\n    }\n\n    @Override\n    public MachineStatus getStatus() {\n        return MachineStatus.IDLE;\n    }\n}\n"}, {"path": "state/MaintenanceState.java", "code": "package org.nailyourinterview.lld.vending_machine.state;\n\nimport lombok.AllArgsConstructor;\nimport org.nailyourinterview.lld.vending_machine.enums.Denomination;\nimport org.nailyourinterview.lld.vending_machine.enums.MachineStatus;\nimport org.nailyourinterview.lld.vending_machine.service.VendingMachine;\n\n@AllArgsConstructor\npublic class MaintenanceState implements VendingState {\n    private final VendingMachine machine;\n\n    @Override\n    public void insertMoney(Denomination money) {\n        System.out.println(\"Out of service. ₹\" + money.getValue() + \" returned.\");\n    }\n\n    @Override\n    public void selectProduct(String code) {\n        System.out.println(\"Out of service.\");\n    }\n\n    @Override\n    public void dispense() {\n        System.out.println(\"Out of service.\");\n    }\n\n    @Override\n    public void cancel() {\n        System.out.println(\"Out of service.\");\n    }\n\n    @Override\n    public MachineStatus getStatus() {\n        return MachineStatus.MAINTENANCE;\n    }\n}\n"}, {"path": "state/VendingState.java", "code": "package org.nailyourinterview.lld.vending_machine.state;\n\nimport org.nailyourinterview.lld.vending_machine.enums.Denomination;\nimport org.nailyourinterview.lld.vending_machine.enums.MachineStatus;\n\npublic interface VendingState {\n    void insertMoney(Denomination money);\n    void selectProduct(String code);\n    void dispense();\n    void cancel();\n    MachineStatus getStatus();\n}\n"}, {"path": "Main.java", "code": "package org.nailyourinterview.lld.vending_machine;\n\nimport org.nailyourinterview.lld.vending_machine.enums.Denomination;\nimport org.nailyourinterview.lld.vending_machine.model.Product;\nimport org.nailyourinterview.lld.vending_machine.model.Slot;\nimport org.nailyourinterview.lld.vending_machine.service.VendingMachine;\n\npublic class Main {\n    public static void main(String[] args) {\n        VendingMachine vm = new VendingMachine(\"VM1\");\n        vm.addSlot(new Slot(\"A1\", new Product(\"Coke\", 25), 5));\n        vm.addSlot(new Slot(\"A2\", new Product(\"Lays\", 20), 3));\n        vm.addSlot(new Slot(\"B1\", new Product(\"Water\", 15), 0));\n        vm.addSlot(new Slot(\"B2\", new Product(\"KitKat\", 30), 2));\n\n        vm.loadCash(Denomination.COIN_1, 2);\n        vm.loadCash(Denomination.COIN_2, 2);\n        vm.loadCash(Denomination.COIN_5, 1);\n\n        System.out.println(\"--- 1. Buy Coke (₹25) with ₹20 + ₹10 ---\");\n        vm.insertMoney(Denomination.NOTE_20);\n        vm.insertMoney(Denomination.COIN_10);\n        vm.selectProduct(\"A1\");\n\n        System.out.println(\"--- 2. Select before paying ---\");\n        vm.selectProduct(\"A2\");\n\n        System.out.println(\"--- 3. Not enough money, then top up ---\");\n        vm.insertMoney(Denomination.COIN_10);\n        vm.selectProduct(\"A2\");\n        vm.insertMoney(Denomination.COIN_10);\n        vm.selectProduct(\"A2\");\n\n        System.out.println(\"--- 4. Sold out, then cancel ---\");\n        vm.insertMoney(Denomination.NOTE_20);\n        vm.selectProduct(\"B1\");\n        vm.cancel();\n\n        System.out.println(\"--- 5. Machine cannot make change ---\");\n        vm.insertMoney(Denomination.NOTE_100);\n        vm.selectProduct(\"B2\");\n        vm.cancel();\n\n        System.out.println(\"--- 6. Maintenance: restock Water ---\");\n        vm.startMaintenance();\n        vm.insertMoney(Denomination.COIN_10);\n        vm.restock(\"B1\", 4);\n        vm.endMaintenance();\n\n        System.out.println(\"--- 7. Buy Water (₹15) with ₹20 ---\");\n        vm.insertMoney(Denomination.NOTE_20);\n        vm.selectProduct(\"B1\");\n\n        System.out.println(\"--- Stock ---\");\n        vm.getInventory().print();\n    }\n}\n"}], "output": "--- 1. Buy Coke (₹25) with ₹20 + ₹10 ---\nInserted ₹20. Balance: ₹20\nInserted ₹10. Balance: ₹30\nDispensed Coke.\nChange ₹5: {COIN_5=1}\n--- 2. Select before paying ---\nInsert money first.\n--- 3. Not enough money, then top up ---\nInserted ₹10. Balance: ₹10\nLays costs ₹20. Insert ₹10 more.\nInserted ₹10. Balance: ₹20\nDispensed Lays.\n--- 4. Sold out, then cancel ---\nInserted ₹20. Balance: ₹20\nWater is sold out. Pick another or cancel.\nCancelled. Refund: [NOTE_20]\n--- 5. Machine cannot make change ---\nInserted ₹100. Balance: ₹100\nCannot return ₹70 change. Insert exact amount or cancel.\nCancelled. Refund: [NOTE_100]\n--- 6. Maintenance: restock Water ---\nMaintenance started.\nOut of service. ₹10 returned.\nRestocked B1 +4.\nMaintenance finished.\n--- 7. Buy Water (₹15) with ₹20 ---\nInserted ₹20. Balance: ₹20\nDispensed Water.\nChange ₹5: {COIN_2=2, COIN_1=1}\n--- Stock ---\n A1 Coke ₹25 x4\n A2 Lays ₹20 x2\n B1 Water ₹15 x3\n B2 KitKat ₹30 x2\n", "main": "Main.java"}</script>
+</section>
+
+<!-- ============ 8. PATTERNS ============ -->
+<section id="patterns">
+<div class="prose">
+  <h2><span class="secnum">7</span>Design patterns</h2>
+  <p>Be honest in the interview. Say which patterns the code <i>uses</i> and which ones you <i>would add</i>.</p>
+  <div class="grid2">
+    <div class="card"><h4>State <span class="tag used">used</span></h4><p><code>VendingState</code> + 4 classes. The machine forwards each action to <code>state</code>. Each state picks the next state with <code>machine.setState(...)</code>.</p></div>
+    <div class="card"><h4>Context object <span class="tag used">used</span></h4><p><code>VendingMachine</code> holds the shared data (inventory, cash box, inserted money) that all states read and change.</p></div>
+    <div class="card"><h4>Enum with data <span class="tag used">used</span></h4><p><code>Denomination(value)</code>: a fixed set of valid money, each with its value. No magic numbers.</p></div>
+    <div class="card"><h4>Composition <span class="tag used">used</span></h4><p>Machine has-a Inventory and a CashBox. Each part does one job and can be tested alone.</p></div>
+    <div class="card"><h4>Strategy <span class="tag could">would add</span></h4><p><code>ChangeStrategy</code> (greedy / backtracking) inside <code>CashBox</code>; <code>PaymentStrategy</code> for cash, card, UPI.</p></div>
+    <div class="card"><h4>Observer <span class="tag could">would add</span></h4><p>Low stock or low coins → notify the operator. Removes <code>System.out</code> from the model.</p></div>
+    <div class="card"><h4>Factory / cached states <span class="tag could">would add</span></h4><p>One instance of each state per machine, handed out by a small factory, instead of <code>new</code> on every transition.</p></div>
+    <div class="card"><h4>Big switch on status <span class="tag avoid">avoid</span></h4><p><code>switch (status)</code> in every method. 4 states × 4 actions = 16 branches spread over the class.</p></div>
+  </div>
+  <div class="callout"><b class="t">SOLID check</b>
+    <ul>
+      <li><b>S</b> — States handle flow, <code>CashBox</code> handles coins, <code>Inventory</code> handles stock.</li>
+      <li><b>O</b> — A new state is a new class. But a new <i>action</i> (e.g. <code>refund</code>) touches the interface and all 4 states — the known cost of State.</li>
+      <li><b>L</b> — Any <code>VendingState</code> can be the current state.</li>
+      <li><b>I</b> — Each state must implement all 4 actions, even ones it rejects. A default method that prints “not allowed” would cut the noise.</li>
+      <li><b>D</b> — States depend on the concrete <code>VendingMachine</code>. Fine at this size.</li>
+    </ul>
+  </div>
+  <h3>Example: change making that never misses (backtracking)</h3>
+<div class="code"><div class="chead"><span>CashBox.plan() — backtracking version</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">private Map&lt;Denomination, Integer&gt; plan(int amount) {
+    return search(amount, Denomination.values().length - 1);
+}
+
+// Try the largest coin first; if the rest cannot be paid, use one fewer and retry
+private Map&lt;Denomination, Integer&gt; search(int amount, int i) {
+    if (amount == 0) return new LinkedHashMap&lt;&gt;();
+    if (i &lt; 0) return null;
+    Denomination d = Denomination.values()[i];
+    for (int use = Math.min(amount / d.getValue(), counts.get(d)); use &gt;= 0; use--) {
+        Map&lt;Denomination, Integer&gt; rest = search(amount - use * d.getValue(), i - 1);
+        if (rest != null) {
+            if (use &gt; 0) rest.put(d, use);
+            return rest;
+        }
+    }
+    return null;
+}</code></pre></div>
+  <p class="why">Same signature, so <code>canMakeChange</code> and <code>makeChange</code> do not change. ₹6 from {₹5, ₹2, ₹2, ₹2}: try one ₹5 → ₹1 left, fails → try zero ₹5 → 2 + 2 + 2. Only 7 denominations, so the search is tiny.</p>
+</div>
+</section>
+
+<!-- ============ 9. SIMILAR ============ -->
+<section id="similar">
+<div class="prose">
+  <h2><span class="secnum">8</span>Similar problems</h2>
+  <p>A problem is similar only if the <b>vending machine model carries over</b>: a machine with a few clear states, one context object that forwards user actions to the current state, money in, and an item or service out from a limited stock. The problems below share that skeleton. They are ranked by how much of this design you can reuse.</p>
+
+  <div class="callout info"><b class="t">The shared skeleton</b>
+    <p><code>Machine</code> (context) → current <code>State</code> · stock (<code>Inventory</code>) · money (<code>CashBox</code> or account) · loop: <b>action → current state checks → do the work → setState(next)</b>.</p>
+  </div>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Problem</th><th>Reuse from Vending Machine</th><th>New part to learn</th></tr></thead>
+    <tbody>
+      <tr><td><b>ATM</b><br><span class="pill easy" style="margin-top:4px;display:inline-block">closest</span></td><td>State pattern (Idle → CardInserted → Authenticated → Dispense), cash box of notes, “can I pay this amount?” check. This repo has it: <code>lld/atm</code>.</td><td>PIN check, account balance, Chain of Responsibility for notes (₹2000 → ₹500 → ₹100).</td></tr>
+      <tr><td><b>Coffee machine</b></td><td>States (idle, paid, brewing), product menu, money and change.</td><td>A recipe uses many ingredients; check stock of all of them. Refill per ingredient.</td></tr>
+      <tr><td><b>Ticket kiosk</b> (metro, parking pay station)</td><td>States, cash box with change, exact-money fallback, cancel and refund.</td><td>The price comes from input (stations, hours), not from a slot. Print a ticket.</td></tr>
+      <tr><td><b>Laundromat washer</b></td><td>States (idle, paid, running, done), coin input, maintenance mode.</td><td>Time-based state change (cycle ends after N minutes). Door lock.</td></tr>
+      <tr><td><b>Traffic light / turnstile</b></td><td>Pure State pattern: same input, different result per state.</td><td>No stock. Timers instead of user actions (traffic light); coin + push (turnstile).</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip"><b class="t">Practice order</b>Turnstile → Vending machine → Coffee machine → Ticket kiosk → ATM. Each one adds one new idea to the same skeleton: stock, recipes, computed price, authentication.</div>
+</div>
+</section>
+
+<!-- ============ 9. RECAP ============ -->
+<section id="recap">
+<div class="prose">
+  <h2><span class="secnum">9</span>Revision cheat sheet</h2>
+  <p style="color:var(--muted)">Read top to bottom, in the order you speak in the interview. Then close your eyes and use the flip cards.</p>
+
+  <div class="tldr">
+    <span class="tldr-k">In one breath</span>
+    <b>VendingMachine</b> owns an <b>Inventory</b> of <b>Slots</b>, a <b>CashBox</b>, the list of inserted coins and a current <b>VendingState</b>. Every action goes to the state: <b>Idle</b> takes money → <b>HasMoney</b> checks code, stock, balance and change → <b>Dispensing</b> drops the item and pays change → back to Idle.
+  </div>
+
+  <div class="tl">
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#EFF1F4;border-color:#A9B1BD">1</div>
+      <div class="tl-body">
+        <h4>Understand the system</h4>
+        <p class="say">Insert ₹ → pick code → item + change. Sold out? Not enough? No change? Cancel → same coins back.</p>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#FFF6C7;border-color:#FFD43B">2</div>
+      <div class="tl-body">
+        <h4>Requirement gathering</h4>
+        <div class="bucket">
+          <span class="bk">Core</span><span>slots (code, product, qty) · coins + notes · pay then pick · change from the box · cancel = exact refund · maintenance</span>
+          <span class="bk">Extensibility</span><span>card / UPI · better change rule · pick-then-pay · alerts · fleet</span>
+          <span class="bk">Dynamic</span><span>slots, prices, cash loaded at runtime · user money + code</span>
+          <span class="bk">High traffic</span><span>not needed — one user at a time; app + keypad → synchronized</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#FFE3E3;border-color:#F27474">3</div>
+      <div class="tl-body">
+        <h4>Core entities</h4>
+        <div class="chips">
+          <span class="chip">VendingMachine</span><span class="chip hl">VendingState → Idle, HasMoney, Dispensing, Maintenance</span>
+          <span class="chip">Inventory</span><span class="chip">Slot</span><span class="chip">Product</span><span class="chip hl">CashBox</span><span class="chip">Denomination</span><span class="chip">MachineStatus</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#EFE7FF;border-color:#A98BF5">4</div>
+      <div class="tl-body">
+        <h4>Class diagram + flow</h4>
+        <div class="figure" id="figRev" style="margin:4px 0 0">
+          <div class="fhead"><b>Who owns what · who calls whom</b><span class="sp"></span>
+            <button class="btn" type="button" data-fs="figRev">⤢ Full screen</button>
+            <button class="btn primary" type="button" data-png="revSvg" data-name="vending-machine-revision.png">⬇ PNG</button>
+          </div>
+          <div class="canvas"><svg id="revSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" role="img" aria-label="Class diagram with call flow"></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#EFF1F4;border-color:#A9B1BD">5</div>
+      <div class="tl-body">
+        <h4>Working code — the only lines to remember</h4>
+<pre class="tree"><span class="tc">// VendingMachine: every action is one line</span>
+public void selectProduct(String code) { state.selectProduct(code); }
+
+<span class="tc">// HasMoneyState.selectProduct: 4 checks, then move on</span>
+if (slot == null || slot.isEmpty() || balance &lt; price) return;   <span class="tc">// with a message each</span>
+cashBox.addAll(inserted);
+if (!cashBox.canMakeChange(balance - price)) { cashBox.removeAll(inserted); return; }
+machine.setState(new DispensingState(machine));
+machine.dispense();
+
+<span class="tc">// DispensingState.dispense</span>
+slot.decrement(); cashBox.makeChange(balance - price);
+machine.resetTransaction(); machine.setState(new IdleState(machine));</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Traps → fixes</h3>
+  <div class="tablewrap"><table class="traps">
+    <tbody>
+      <tr><td><code>if (status == …)</code> in every method</td><td>One class per state (done)</td></tr>
+      <tr><td><code>double</code> for money</td><td><code>int</code> rupees or paise (done)</td></tr>
+      <tr><td>Item dropped, then “no change”</td><td>Check <code>canMakeChange</code> <b>before</b> dispensing (done)</td></tr>
+      <tr><td>Refund the amount, not the coins</td><td>Keep <code>List&lt;Denomination&gt;</code> inserted (done)</td></tr>
+      <tr><td>User’s own coins ignored for change</td><td><code>addAll</code> before the check, <code>removeAll</code> on failure (done)</td></tr>
+      <tr><td>Greedy misses: ₹6 from {₹5, ₹2 × 3}</td><td>Backtracking in <code>plan()</code> (see §7)</td></tr>
+      <tr><td><code>getInsertedMoney()</code> returns the live list (Lombok <code>@Getter</code>)</td><td>Return <code>List.copyOf(...)</code>; mutate only through <code>addMoney</code> / <code>resetTransaction</code></td></tr>
+      <tr><td>Item jams after the money is taken</td><td><code>DispensingState</code> catches the failure, refunds, and moves to Maintenance</td></tr>
+      <tr><td><code>restock(code, -5)</code> is accepted</td><td>Reject <code>count &lt;= 0</code></td></tr>
+      <tr><td>Maintenance started mid-sale</td><td>Allowed only from IDLE (done)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Patterns in one look</h3>
+  <div class="pat">
+    <div><span class="tag used">used</span>State · context object · enum with data · composition</div>
+    <div><span class="tag could">add</span>Strategy (change, payment) · Observer (alerts) · cached state objects</div>
+    <div><span class="tag avoid">avoid</span>big <code>switch (status)</code> · <code>double</code> money</div>
+  </div>
+
+  <h3>Test yourself</h3>
+  <div class="fc-bar">
+    <span style="color:var(--muted);font-size:14px">Say the answer out loud first. Then tap the card.</span>
+    <button class="btn" type="button" id="fcAll">Show all answers</button>
+  </div>
+  <div class="fc-grid" id="fcGrid">
+    <button class="fc" type="button"><span class="q">Why the State pattern here?</span><span class="a">The same 4 actions behave differently in each state. One class per state puts each behaviour in one place. A new state is a new class.</span></button>
+    <button class="fc" type="button"><span class="q">Who moves the machine to the next state?</span><span class="a">The current state. It calls <code>machine.setState(new NextState(machine))</code>. The machine only forwards.</span></button>
+    <button class="fc" type="button"><span class="q">List the checks in selectProduct, in order.</span><span class="a">Code exists → not sold out → balance ≥ price → change possible. Any failure: message, stay in HAS_MONEY.</span></button>
+    <button class="fc" type="button"><span class="q">Why store the list of coins, not just the balance?</span><span class="a">Cancel must return the same coins and notes. The coins can also be used as change for this sale.</span></button>
+    <button class="fc" type="button"><span class="q">Box: ₹1 × 2, ₹2 × 2, ₹10 × 3, ₹20 × 1. ₹100 for a ₹30 KitKat?</span><span class="a">Change ₹70 = 50? none. 20 → 50 left, 10 × 3 → 20 left, 2 × 2 → 16, 1 × 2 → 14. Fails → “insert exact amount”. Cancel refunds the ₹100.</span></button>
+    <button class="fc" type="button"><span class="q">When does greedy change fail? Fix?</span><span class="a">Limited coins: ₹6 from {₹5, ₹2, ₹2, ₹2}. Greedy takes ₹5 and is stuck. Backtracking (one fewer ₹5) finds 2 + 2 + 2.</span></button>
+    <button class="fc" type="button"><span class="q">selectProduct() while IDLE?</span><span class="a"><code>IdleState</code> prints “Insert money first.” No state change. No <code>if</code> in the machine.</span></button>
+    <button class="fc" type="button"><span class="q">Do we need concurrency?</span><span class="a">No: one keypad, one user. App + keypad on one machine → <code>synchronized</code> actions or one event queue.</span></button>
+  </div>
+</div>
+<footer class="prose">Notes for revision. Code in <code>Low-Level-Design/src/main/java/org/nailyourinterview/lld/vending_machine</code>. Layout inspired by the AlgoMaster LLD format.</footer>
+</section>
+
+</main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+<script>
+(function(){
+/* ---------- theme ---------- */
+const root = document.documentElement;
+try { const t = localStorage.getItem('sl-theme'); if (t) root.dataset.theme = t; } catch(e){}
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('sl-theme', root.dataset.theme); } catch(e){}
+});
+
+/* ---------- toc, scrollspy, progress ---------- */
+document.getElementById('mtoc').innerHTML = document.getElementById('toc').innerHTML.replace(/<h4>.*?<\/h4>/,'');
+const links = [...document.querySelectorAll('#toc a')];
+const obs = new IntersectionObserver(es => {
+  es.forEach(e => { if (e.isIntersecting) links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id)); });
+}, { rootMargin: '-30% 0px -65% 0px' });
+document.querySelectorAll('main section').forEach(s => obs.observe(s));
+const bar = document.getElementById('progress');
+addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - innerHeight;
+  bar.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%';
+}, { passive: true });
+
+/* ---------- copy buttons ---------- */
+document.querySelectorAll('.code .copy').forEach(b => b.addEventListener('click', () => {
+  const txt = b.closest('.code').querySelector('code').innerText;
+  navigator.clipboard && navigator.clipboard.writeText(txt).then(() => { b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1200); });
+}));
+
+/* ---------- SVG diagram engine (miro-style) ---------- */
+const NS = 'http://www.w3.org/2000/svg';
+const FONT = "Inter, 'Segoe UI', Arial, sans-serif";
+const MONO = "'JetBrains Mono', Consolas, 'Courier New', monospace";
+function el(tag, attrs, parent){ const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; }
+function txt(parent, x, y, s, attrs){ const t = el('text', Object.assign({x, y, style: 'font-variant-ligatures:none'}, attrs || {}), parent); t.textContent = s; return t; }
+
+function setupCanvas(svg){
+  const defs = el('defs', {}, svg);
+  const pat = el('pattern', {id: svg.id + '-dots', width: 22, height: 22, patternUnits: 'userSpaceOnUse'}, defs);
+  el('circle', {cx: 2, cy: 2, r: 1.2, fill: '#d5d9e0'}, pat);
+  const f = el('filter', {id: svg.id + '-sh', x: '-10%', y: '-10%', width: '130%', height: '140%'}, defs);
+  el('feDropShadow', {dx: 0, dy: 3, stdDeviation: 4, 'flood-color': '#1f2a44', 'flood-opacity': .14}, f);
+  const vb = svg.viewBox.baseVal;
+  el('rect', {x: 0, y: 0, width: vb.width, height: vb.height, fill: '#fbfbfc'}, svg);
+  el('rect', {x: 0, y: 0, width: vb.width, height: vb.height, fill: `url(#${svg.id}-dots)`}, svg);
+  return { edges: el('g', {}, svg), nodes: el('g', {}, svg), deco: el('g', {}, svg), labels: el('g', {}, svg) };
+}
+
+const PALETTE = {
+  yellow: ['#FFF6C7', '#FFD43B', '#8a6d00'],
+  blue:   ['#E3EEFF', '#7DAEF8', '#1d4f99'],
+  sky:    ['#EAF4FF', '#A8CCFB', '#1d4f99'],
+  green:  ['#E2F7E7', '#69C985', '#1b6b34'],
+  purple: ['#EFE7FF', '#A98BF5', '#4b2ea3'],
+  orange: ['#FFEADB', '#FFA463', '#8a3b00'],
+  red:    ['#FFE3E3', '#F27474', '#8f1d1d'],
+  teal:   ['#DBF7EF', '#45C9A4', '#0d6650'],
+  pink:   ['#FDE6F4', '#EA82C0', '#8a1e5c'],
+  gray:   ['#EFF1F4', '#A9B1BD', '#3d4450']
+};
+
+function classBox(g, svgId, b){
+  const [body, head, ink] = PALETTE[b.c];
+  const LH = 17, PAD = 8, headH = b.st ? 48 : 34;
+  const fH = b.f.length ? b.f.length * LH + PAD * 2 : 0;
+  const mH = b.m.length ? b.m.length * LH + PAD * 2 : 0;
+  const h = headH + fH + mH;
+  const grp = el('g', {transform: `translate(${b.x},${b.y})`, filter: `url(#${svgId}-sh)`}, g);
+  el('rect', {width: b.w, height: h, rx: 12, fill: body, stroke: head, 'stroke-width': 1.5}, grp);
+  el('path', {d: `M0 12 A12 12 0 0 1 12 0 H${b.w - 12} A12 12 0 0 1 ${b.w} 12 V${headH} H0 Z`, fill: head}, grp);
+  if (b.st) txt(grp, b.w / 2, 18, b.st, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 11.5, 'font-style': 'italic', fill: '#1f2328', opacity: .75});
+  txt(grp, b.w / 2, b.st ? 38 : 23, b.name, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 16, 'font-weight': 800, fill: '#1f2328', 'font-style': b.abs ? 'italic' : 'normal'});
+  let y = headH;
+  if (b.f.length){
+    b.f.forEach((s, i) => txt(grp, 12, y + PAD + LH * (i + 1) - 4, s, {'font-family': MONO, 'font-size': 12.5, fill: ink}));
+    y += fH;
+    if (b.m.length) el('line', {x1: 0, y1: y, x2: b.w, y2: y, stroke: head, 'stroke-width': 1}, grp);
+  }
+  b.m.forEach((s, i) => txt(grp, 12, y + PAD + LH * (i + 1) - 4, s, {'font-family': MONO, 'font-size': 12.5, fill: '#1f2328'}));
+  b.h = h;
+}
+
+function roundedPath(pts, r){
+  if (pts.length < 3) return `M${pts[0][0]} ${pts[0][1]} L${pts[1][0]} ${pts[1][1]}`;
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++){
+    const [px, py] = pts[i - 1], [cx, cy] = pts[i], [nx, ny] = pts[i + 1];
+    const l1 = Math.hypot(cx - px, cy - py), l2 = Math.hypot(nx - cx, ny - cy);
+    const rr = Math.min(r, l1 / 2, l2 / 2);
+    const ax = cx - (cx - px) / l1 * rr, ay = cy - (cy - py) / l1 * rr;
+    const bx = cx + (nx - cx) / l2 * rr, by = cy + (ny - cy) / l2 * rr;
+    d += ` L${ax} ${ay} Q${cx} ${cy} ${bx} ${by}`;
+  }
+  const last = pts[pts.length - 1];
+  return d + ` L${last[0]} ${last[1]}`;
+}
+function unit(a, b){ const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; }
+
+function edge(L, e){
+  const color = e.color || '#4a5263';
+  const dashed = e.kind === 'dep';
+  el('path', {d: roundedPath(e.p, 14), fill: 'none', stroke: color, 'stroke-width': 1.8, 'stroke-dasharray': dashed ? '6 5' : 'none', 'stroke-linecap': 'round'}, L.edges);
+  const p0 = e.p[0], p1 = e.p[1], pn = e.p[e.p.length - 1], pm = e.p[e.p.length - 2];
+  if (e.kind === 'comp' || e.kind === 'agg'){
+    const [ux, uy] = unit(p0, p1), vx = -uy, vy = ux;
+    const pt = (a, b) => `${p0[0] + ux * a + vx * b},${p0[1] + uy * a + vy * b}`;
+    el('polygon', {points: [pt(0, 0), pt(9, 6), pt(18, 0), pt(9, -6)].join(' '), fill: e.kind === 'comp' ? color : '#ffffff', stroke: color, 'stroke-width': 1.6}, L.deco);
+  }
+  if (e.kind === 'inh'){
+    const [ux, uy] = unit(pm, pn), vx = -uy, vy = ux;
+    const pt = (a, b) => `${pn[0] - ux * a + vx * b},${pn[1] - uy * a + vy * b}`;
+    el('polygon', {points: [pt(0, 0), pt(16, 9), pt(16, -9)].join(' '), fill: '#ffffff', stroke: color, 'stroke-width': 1.6}, L.deco);
+  }
+  if (e.kind === 'dep' || e.kind === 'assoc'){
+    const [ux, uy] = unit(pm, pn), vx = -uy, vy = ux;
+    const pt = (a, b) => `${pn[0] - ux * a + vx * b},${pn[1] - uy * a + vy * b}`;
+    el('polyline', {points: [pt(12, 7), pt(0, 0), pt(12, -7)].join(' '), fill: 'none', stroke: color, 'stroke-width': 1.8, 'stroke-linejoin': 'round', 'stroke-linecap': 'round'}, L.deco);
+  }
+  if (e.kind === 'flow'){
+    const [ux, uy] = unit(pm, pn), vx = -uy, vy = ux;
+    const pt = (a, b) => `${pn[0] - ux * a + vx * b},${pn[1] - uy * a + vy * b}`;
+    el('polygon', {points: [pt(0, 0), pt(12, 6), pt(12, -6)].join(' '), fill: color}, L.deco);
+  }
+  if (e.kind === 'merge') el('circle', {cx: pn[0], cy: pn[1], r: 4, fill: color}, L.deco);
+  if (e.label) label(L, e.label[0], e.label[1], e.label[2], e.labelColor, e.labelSize);
+}
+function label(L, x, y, s, color, size){
+  const t = txt(L.labels, x, y + (size ? size / 3 : 4), s, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': size || 12, 'font-weight': 600, fill: color || '#3d4450'});
+  const bb = t.getBBox();
+  const r = el('rect', {x: bb.x - 7, y: bb.y - 3, width: bb.width + 14, height: bb.height + 6, rx: 9, fill: '#ffffff', stroke: '#d9dde4'});
+  L.labels.insertBefore(r, t);
+}
+function sticky(L, svgId, x, y, w, h, color, title, lines, rot, fs){
+  fs = fs || 13;
+  const g = el('g', {transform: `translate(${x},${y}) rotate(${rot || 0})`, filter: `url(#${svgId}-sh)`}, L.nodes);
+  el('rect', {width: w, height: h, rx: 4, fill: color}, g);
+  txt(g, 14, 12 + fs + 1, title, {'font-family': FONT, 'font-size': fs + 1, 'font-weight': 800, fill: '#1f2328'});
+  lines.forEach((s, i) => txt(g, 14, 24 + fs * 2 + i * fs * 1.45, s, {'font-family': FONT, 'font-size': fs, fill: '#2f3540'}));
+  return g;
+}
+
+/* ---------- class diagram ---------- */
+(function(){
+  const svg = document.getElementById('classSvg');
+  const L = setupCanvas(svg);
+  txt(L.labels, 40, 34, 'Vending Machine — Class Diagram', {'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+  const boxes = [
+    {name: 'VendingMachine', st: '«context»', x: 480, y: 70, w: 420, c: 'yellow', f: ['- id: String', '- inventory: Inventory', '- cashBox: CashBox', '- insertedMoney: List<Denomination>', '- state: VendingState', '- selectedSlot: Slot'], m: ['+ insertMoney(Denomination)', '+ selectProduct(code)', '+ dispense()', '+ cancel()', '+ startMaintenance() / endMaintenance()', '+ restock(code, count)', '+ addSlot(Slot) / loadCash(d, n)', '+ addMoney(Denomination)', '+ getBalance(): int', '+ resetTransaction()']},
+    {name: 'CashBox', x: 480, y: 500, w: 420, c: 'teal', f: ['- counts: EnumMap<Denomination, Integer>'], m: ['+ add(d, count)', '+ addAll(list) / removeAll(list)', '+ canMakeChange(amount): boolean', '+ makeChange(amount): Map<Denom, Integer>', '- plan(amount)   // greedy']},
+    {name: 'Enums', st: '«enum»', x: 480, y: 750, w: 420, c: 'gray', f: ['Denomination(value):', '  COIN_1, COIN_2, COIN_5, COIN_10,', '  NOTE_20, NOTE_50, NOTE_100', 'MachineStatus:', '  IDLE, HAS_MONEY, DISPENSING, MAINTENANCE'], m: []},
+    {name: 'Inventory', x: 40, y: 200, w: 380, c: 'blue', f: ['- slots: Map<code, Slot>'], m: ['+ addSlot(Slot)', '+ getSlot(code): Slot', '+ restock(code, count)', '+ print()']},
+    {name: 'Slot', x: 40, y: 440, w: 380, c: 'sky', f: ['- code: String', '- product: Product', '- quantity: int'], m: ['+ isEmpty(): boolean', '+ decrement()', '+ restock(count)']},
+    {name: 'Product', x: 40, y: 690, w: 380, c: 'green', f: ['- name: String', '- price: int   // rupees'], m: []},
+    {name: 'VendingState', st: '«interface»', abs: true, x: 960, y: 70, w: 400, c: 'purple', f: [], m: ['+ insertMoney(Denomination)', '+ selectProduct(code)', '+ dispense()', '+ cancel()', '+ getStatus(): MachineStatus']},
+    {name: 'IdleState', x: 960, y: 300, w: 190, c: 'purple', f: ['money → HasMoney'], m: []},
+    {name: 'HasMoneyState', x: 1170, y: 300, w: 190, c: 'purple', f: ['select ✓ → Dispensing', 'cancel → Idle'], m: []},
+    {name: 'DispensingState', x: 960, y: 440, w: 190, c: 'purple', f: ['done → Idle'], m: []},
+    {name: 'MaintenanceState', x: 1170, y: 440, w: 190, c: 'purple', f: ['rejects all'], m: []}
+  ];
+  boxes.forEach(b => classBox(L.nodes, svg.id, b));
+  /* VM 70..408, CashBox 500..668, Enums 750..899, Inventory 200..351, Slot 440..608, Product 690..774,
+     VendingState 70..219, Idle 300..367, HasMoney 300..384, Dispensing/Maintenance 440..507 */
+  const E = [
+    {kind: 'comp', p: [[480, 276], [420, 276]], label: [450, 276, 'has a']},
+    {kind: 'agg',  p: [[230, 351], [230, 440]], label: [230, 395, 'has many']},
+    {kind: 'assoc',p: [[480, 380], [450, 380], [450, 524], [420, 524]], label: [450, 452, 'may have 1']},
+    {kind: 'agg',  p: [[230, 608], [230, 690]], label: [230, 649, 'has a']},
+    {kind: 'comp', p: [[690, 408], [690, 500]], label: [690, 454, 'has a']},
+    {kind: 'dep',  p: [[690, 668], [690, 750]], label: [690, 709, 'uses']},
+    {kind: 'agg',  p: [[900, 140], [960, 140]], label: [930, 140, 'has a']},
+    {kind: 'inh',  p: [[1055, 300], [1055, 265], [1160, 265], [1160, 219]], label: [1108, 265, 'is a']},
+    {kind: 'inh',  p: [[1265, 300], [1265, 265], [1160, 265], [1160, 219]]},
+    {kind: 'inh',  p: [[960, 473], [940, 473], [940, 265], [1160, 265], [1160, 219]]},
+    {kind: 'inh',  p: [[1360, 473], [1380, 473], [1380, 265], [1160, 265], [1160, 219]]}
+  ];
+  E.forEach(e => edge(L, e));
+
+  // legend
+  const lg = el('g', {transform: 'translate(40,860)', filter: `url(#${svg.id}-sh)`}, L.nodes);
+  el('rect', {width: 300, height: 246, rx: 12, fill: '#ffffff', stroke: '#dfe3ea'}, lg);
+  txt(lg, 16, 28, 'Legend', {'font-family': FONT, 'font-size': 14, 'font-weight': 800, fill: '#1f2328'});
+  const LL = {edges: lg, deco: lg, labels: lg};
+  const items = [['comp', 'Composition (owns, same lifetime)'], ['agg', 'Aggregation (has, lives outside)'], ['assoc', 'Association (knows about)'], ['dep', 'Dependency (uses / creates)'], ['inh', 'Inheritance (is-a)']];
+  items.forEach(([k, s], i) => {
+    const y = 60 + i * 36;
+    edge(LL, {kind: k, p: [[18, y], [72, y]]});
+    txt(lg, 86, y + 4, s, {'font-family': FONT, 'font-size': 12.5, fill: '#2f3540'});
+  });
+  txt(lg, 16, 234, '- private   + public   # protected', {'font-family': MONO, 'font-size': 11.5, fill: '#5b6471'});
+
+  // sticky notes
+  sticky(L, svg.id, 960, 580, 400, 120, '#FFF3A3', '🔁 Two-way link', ['Each state keeps a ref to the machine', 'to read data and call setState(next).'], -1, 15);
+  sticky(L, svg.id, 960, 750, 400, 140, '#D3F5E1', '💰 Money rules', ['int rupees, never double.', 'Keep the coins, not just the sum:', 'cancel returns the same coins.'], 1, 15);
+})();
+
+/* ---------- state diagram ---------- */
+(function(){
+  const svg = document.getElementById('stateSvg');
+  const L = setupCanvas(svg);
+  txt(L.labels, 30, 34, 'States of the machine', {'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+  function node(x, y, w, h, c, t){
+    const [body, head] = PALETTE[c];
+    const g = el('g', {filter: `url(#${svg.id}-sh)`}, L.nodes);
+    el('rect', {x: x - w / 2, y: y - h / 2, width: w, height: h, rx: h / 2, fill: body, stroke: head, 'stroke-width': 2.5}, g);
+    txt(g, x, y + 6, t, {'text-anchor': 'middle', 'font-family': MONO, 'font-size': 16, 'font-weight': 700, fill: '#1f2328'});
+  }
+  node(200, 100, 220, 60, 'gray', 'MAINTENANCE');
+  node(200, 280, 180, 64, 'sky', 'IDLE');
+  node(550, 280, 200, 64, 'yellow', 'HAS_MONEY');
+  node(900, 280, 200, 64, 'green', 'DISPENSING');
+  el('circle', {cx: 50, cy: 280, r: 9, fill: '#1f2328'}, L.nodes);
+  const F = [
+    {p: [[59, 280], [110, 280]]},
+    {p: [[290, 262], [450, 262]], label: [370, 262, 'insertMoney(₹)']},
+    {p: [[450, 298], [290, 298]], label: [370, 298, 'cancel() → refund']},
+    {p: [[510, 248], [510, 170], [590, 170], [590, 248]], label: [550, 170, 'insertMoney · select fails']},
+    {p: [[650, 280], [800, 280]], label: [725, 280, 'select ✓']},
+    {p: [[900, 312], [900, 400], [200, 400], [200, 312]], label: [550, 400, 'dispense() → item + change']},
+    {p: [[180, 248], [180, 130]], label: [95, 190, 'startMaintenance()']},
+    {p: [[220, 130], [220, 248]], label: [310, 190, 'endMaintenance()']}
+  ];
+  F.forEach(e => edge(L, {kind: 'flow', p: e.p, label: e.label, color: '#4a5263'}));
+  sticky(L, svg.id, 760, 130, 280, 92, '#FFF3A3', '⚡ dispense()', ['called right after select ✓', 'by HasMoneyState itself'], 0, 14);
+  sticky(L, svg.id, 640, 430, 420, 92, '#D3F5E1', '🚫 Any other action', ['The state prints a message and stays.', 'No if (status == ...) anywhere.'], 0, 14);
+})();
+
+/* ---------- flowchart ---------- */
+(function(){
+  const svg = document.getElementById('flowSvg');
+  const L = setupCanvas(svg);
+  txt(L.labels, 30, 34, 'HasMoneyState.selectProduct(code)', {'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+  function node(n){
+    const [body, head] = PALETTE[n.c];
+    const g = el('g', {filter: `url(#${svg.id}-sh)`}, L.nodes);
+    const x = n.x - n.w / 2, y = n.y - n.h / 2;
+    if (n.shape === 'dec') el('polygon', {points: `${n.x},${y} ${x + n.w},${n.y} ${n.x},${y + n.h} ${x},${n.y}`, fill: body, stroke: head, 'stroke-width': 2}, g);
+    else el('rect', {x, y, width: n.w, height: n.h, rx: n.shape === 'term' ? n.h / 2 : 10, fill: body, stroke: head, 'stroke-width': 2}, g);
+    const lines = n.t.split('\n');
+    lines.forEach((s, i) => txt(g, n.x, n.y + 5 + (i - (lines.length - 1) / 2) * 18, s, {'text-anchor': 'middle', 'font-family': n.mono ? MONO : FONT, 'font-size': n.mono ? 13 : 14, 'font-weight': n.mono ? 500 : 700, fill: '#1f2328'}));
+  }
+  const N = [
+    {x: 480, y: 70,  w: 300, h: 46, shape: 'term', c: 'purple', t: 'selectProduct(code)', mono: true},
+    {x: 480, y: 160, w: 220, h: 90, shape: 'dec', c: 'yellow', t: 'slot exists?'},
+    {x: 800, y: 160, w: 200, h: 50, c: 'gray', t: 'Invalid code'},
+    {x: 480, y: 280, w: 220, h: 90, shape: 'dec', c: 'yellow', t: 'sold out?'},
+    {x: 800, y: 280, w: 220, h: 58, c: 'gray', t: 'Sold out\npick another / cancel'},
+    {x: 480, y: 400, w: 260, h: 96, shape: 'dec', c: 'yellow', t: 'balance >= price ?', mono: true},
+    {x: 800, y: 400, w: 220, h: 58, c: 'gray', t: 'Insert ₹(price − balance)\nmore'},
+    {x: 480, y: 510, w: 340, h: 46, c: 'blue', t: 'cashBox.addAll(inserted)', mono: true},
+    {x: 480, y: 625, w: 320, h: 100, shape: 'dec', c: 'yellow', t: 'canMakeChange(change)?', mono: true},
+    {x: 820, y: 625, w: 220, h: 58, c: 'gray', t: 'removeAll(inserted)\nask for exact amount'},
+    {x: 480, y: 740, w: 340, h: 58, c: 'blue', t: 'setState(Dispensing)\nmachine.dispense()', mono: true},
+    {x: 480, y: 830, w: 380, h: 58, c: 'sky', t: 'slot.decrement()\ncashBox.makeChange(change)', mono: true},
+    {x: 480, y: 920, w: 320, h: 46, shape: 'term', c: 'green', t: 'resetTransaction() → IDLE', mono: true}
+  ];
+  N.forEach(node);
+  sticky(L, svg.id, 30, 330, 250, 116, '#FFE3E3', '↩ Any failure', ['Message only.', 'State stays HAS_MONEY.', 'User adds, picks or cancels.'], 0, 14);
+  sticky(L, svg.id, 30, 520, 250, 116, '#FFF3A3', '💡 Why addAll first?', ['User coins can be', 'part of the change.', 'removeAll undoes it.'], 0, 14);
+  const F = [
+    {kind: 'flow', p: [[480, 93], [480, 115]]},
+    {kind: 'flow', p: [[590, 160], [700, 160]], label: [645, 160, 'no'], labelColor: '#cf222e'},
+    {kind: 'flow', p: [[480, 205], [480, 235]], label: [506, 220, 'yes'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[590, 280], [690, 280]], label: [640, 280, 'yes'], labelColor: '#cf222e'},
+    {kind: 'flow', p: [[480, 325], [480, 352]], label: [504, 338, 'no'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[610, 400], [690, 400]], label: [650, 400, 'no'], labelColor: '#cf222e'},
+    {kind: 'flow', p: [[480, 448], [480, 487]], label: [506, 467, 'yes'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[480, 533], [480, 575]]},
+    {kind: 'flow', p: [[640, 625], [710, 625]], label: [675, 625, 'no'], labelColor: '#cf222e'},
+    {kind: 'flow', p: [[480, 675], [480, 711]], label: [506, 693, 'yes'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[480, 769], [480, 801]]},
+    {kind: 'flow', p: [[480, 859], [480, 897]]}
+  ];
+  F.forEach(e => edge(L, e));
+})();
+
+/* ---------- interview flow ---------- */
+(function(){
+  const svg = document.getElementById('stepsSvg');
+  const L = setupCanvas(svg);
+  const X = 440, W = 260, H = 64;
+  const steps = [
+    {t: 'Understand the system', c: 'gray', y: 40, href: '#overview'},
+    {t: 'Requirement gathering', c: 'yellow', y: 170, href: '#requirements'},
+    {t: 'Core entities + breakdown', c: 'red', y: 320, href: '#entities'},
+    {t: 'Class diagram with flow', c: 'purple', y: 470, href: '#classes'},
+    {t: 'Working code', c: 'gray', y: 610, href: '#code'}
+  ];
+  steps.forEach((st, i) => {
+    const [body, head] = PALETTE[st.c];
+    const a = el('a', {href: st.href}, L.nodes);
+    const g = el('g', {filter: `url(#${svg.id}-sh)`, style: 'cursor:pointer'}, a);
+    el('rect', {x: X, y: st.y, width: W, height: H, rx: 10, fill: body, stroke: head, 'stroke-width': 2.5}, g);
+    txt(g, X + W / 2, st.y + H / 2 + 6, st.t, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 17, 'font-weight': 800, fill: '#1f2328'});
+    if (i) edge(L, {kind: 'flow', p: [[X + W / 2, steps[i - 1].y + H], [X + W / 2, st.y]], color: '#1f2328'});
+  });
+
+  // the 3 requirement buckets
+  const ry = 170 + H / 2;
+  sticky(L, svg.id, 790, 20, 380, 110, '#FFF3A3', '① Extensibility (new features)', ['Card / UPI → PaymentStrategy', 'Better change rule → ChangeStrategy', 'New flow (pick first) → one new State'], 0);
+  sticky(L, svg.id, 790, 150, 380, 110, '#D3F5E1', '② Dynamic (user input)', ['Slots, products, prices added at runtime', 'Starting cash loaded by the operator', 'User: money + product code, any order'], 0);
+  sticky(L, svg.id, 790, 280, 380, 110, '#FFE3E3', '③ High traffic (concurrency)', ['Not needed: one user at a time', 'App + keypad → synchronized actions', 'Fleet: each machine owns its state'], 0);
+  [75, 205, 335].forEach(y => edge(L, {kind: 'dep', p: [[X + W, ry], [745, ry], [745, y], [790, y]]}));
+
+  // side notes per step
+  sticky(L, svg.id, 40, 22, 340, 100, '#E3EEFF', 'Buy one item in your head', ['insert ₹ → pick A1 → item + change', 'Sold out? Too little? No change?'], 0);
+  edge(L, {kind: 'dep', p: [[X, 72], [380, 72]]});
+  sticky(L, svg.id, 40, 290, 340, 120, '#EFE7FF', 'Nouns → classes', ['VendingMachine, Inventory, Slot', 'Product, CashBox, Denomination', 'States: Idle, HasMoney, Dispensing'], 0);
+  edge(L, {kind: 'dep', p: [[X, 352], [380, 352]]});
+  sticky(L, svg.id, 790, 455, 380, 92, '#EFF1F4', 'Relationships + states', ['has-a → Machine has Inventory, CashBox', 'is-a → IdleState is-a VendingState'], 0);
+  edge(L, {kind: 'dep', p: [[X + W, 502], [790, 502]]});
+  sticky(L, svg.id, 790, 595, 380, 92, '#EFF1F4', 'Build bottom-up', ['enums, Product, Slot, Inventory, CashBox', '→ states → VendingMachine → Main'], 0);
+  edge(L, {kind: 'dep', p: [[X + W, 642], [790, 642]]});
+
+  // which round covers which steps
+  txt(L.labels, 40, 560, 'LLD round', {'font-family': FONT, 'font-size': 14, 'font-weight': 800, fill: '#5b5bd6'});
+  txt(L.labels, 40, 582, 'Requirements → Entities → Class diagram', {'font-family': FONT, 'font-size': 13, fill: '#2f3540'});
+  txt(L.labels, 40, 620, 'Machine coding round', {'font-family': FONT, 'font-size': 14, 'font-weight': 800, fill: '#e8590c'});
+  txt(L.labels, 40, 642, 'Entities → Working code', {'font-family': FONT, 'font-size': 13, fill: '#2f3540'});
+})();
+
+/* ---------- revision diagram ---------- */
+(function(){
+  const svg = document.getElementById('revSvg');
+  const L = setupCanvas(svg);
+  const FLOW = '#5b5bd6', STRUCT = '#9aa3b2';
+  function box(x, y, w, h, c, name, sub){
+    const [body, head] = PALETTE[c];
+    const g = el('g', {filter: `url(#${svg.id}-sh)`}, L.nodes);
+    el('rect', {x, y, width: w, height: h, rx: 12, fill: body, stroke: head, 'stroke-width': 2.5}, g);
+    txt(g, x + w / 2, y + (sub ? 32 : h / 2 + 7), name, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+    if (sub) txt(g, x + w / 2, y + 56, sub, {'text-anchor': 'middle', 'font-family': MONO, 'font-size': 14, fill: '#3d4450'});
+  }
+  box(20, 40, 200, 72, 'gray', 'User', 'money · code');
+  box(380, 40, 240, 72, 'yellow', 'VendingMachine', 'forwards');
+  box(380, 220, 240, 72, 'purple', 'VendingState', 'current state');
+  box(380, 400, 240, 72, 'teal', 'CashBox', 'coins + change');
+  box(760, 40, 220, 72, 'blue', 'Inventory', 'code → Slot');
+  box(760, 220, 220, 72, 'sky', 'Slot', 'product + qty');
+
+  // structure: has-a (grey)
+  [
+    {kind: 'comp', p: [[620, 76], [760, 76]]},
+    {kind: 'agg',  p: [[870, 112], [870, 220]]},
+    {kind: 'agg',  p: [[590, 112], [590, 220]]},
+    {kind: 'comp', p: [[380, 104], [340, 104], [340, 436], [380, 436]]}
+  ].forEach(e => edge(L, Object.assign({color: STRUCT}, e)));
+
+  // flow: numbered calls in one purchase (purple)
+  [
+    {p: [[220, 56], [380, 56]], label: [300, 56, '1 · insertMoney()'], size: 14},
+    {p: [[460, 112], [460, 220]], label: [460, 166, '2 · state.xxx()']},
+    {p: [[220, 96], [380, 96]], label: [300, 96, '3 · selectProduct()'], size: 14},
+    {p: [[620, 240], [760, 240]], label: [690, 240, '4 · getSlot()'], size: 14},
+    {p: [[500, 292], [500, 400]], label: [500, 346, '5 · canMakeChange()'], size: 15},
+    {p: [[620, 276], [760, 276]], label: [690, 276, '6 · decrement()'], size: 14}
+  ].forEach(e => edge(L, {kind: 'flow', p: e.p, color: FLOW, label: e.label, labelColor: FLOW, labelSize: e.size || 16}));
+
+  // notes
+  sticky(L, svg.id, 730, 330, 250, 116, '#FFF3A3', '💡 Key idea', ['Machine only forwards.', 'The state decides and', 'calls setState(next).'], 1, 15);
+  sticky(L, svg.id, 40, 200, 260, 116, '#D3F5E1', '↩ After 6', ['makeChange(change)', 'resetTransaction()', 'state = Idle'], -1, 15);
+
+  // legend
+  const lg = el('g', {transform: 'translate(40,500)'}, L.labels);
+  el('line', {x1: 0, y1: 10, x2: 44, y2: 10, stroke: STRUCT, 'stroke-width': 2.5}, lg);
+  txt(lg, 54, 16, 'structure: has-a', {'font-family': FONT, 'font-size': 17, fill: '#3d4450'});
+  el('line', {x1: 0, y1: 42, x2: 44, y2: 42, stroke: FLOW, 'stroke-width': 2.5}, lg);
+  txt(lg, 54, 48, '1 → 6  calls in one purchase', {'font-family': FONT, 'font-size': 17, 'font-weight': 700, fill: FLOW});
+})();
+
+/* ---------- PNG export + fullscreen ---------- */
+document.querySelectorAll('[data-png]').forEach(b => b.addEventListener('click', () => {
+  const svg = document.getElementById(b.dataset.png);
+  const vb = svg.viewBox.baseVal, k = 2;
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('width', vb.width); clone.setAttribute('height', vb.height);
+  const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = vb.width * k; c.height = vb.height * k;
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fbfbfc'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    c.toBlob(blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = b.dataset.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
+  };
+  img.src = src;
+}));
+document.querySelectorAll('[data-fs]').forEach(b => b.addEventListener('click', () => {
+  const f = document.getElementById(b.dataset.fs);
+  if (document.fullscreenElement) document.exitFullscreen(); else f.requestFullscreen && f.requestFullscreen();
+}));
+
+/* ---------- simulator (mirrors VendingMachine + states + CashBox) ---------- */
+const DENOMS = [['COIN_1', 1], ['COIN_2', 2], ['COIN_5', 5], ['COIN_10', 10], ['NOTE_20', 20], ['NOTE_50', 50], ['NOTE_100', 100]];
+const VAL = Object.fromEntries(DENOMS);
+const ICONS = {Coke: '🥤', Lays: '🍟', Water: '💧', KitKat: '🍫'};
+const logEl = document.getElementById('log');
+let vm;
+function log(html, call){ const li = document.createElement('li'); li.innerHTML = html + (call ? `<span class="call">${call}</span>` : ''); logEl.prepend(li); while (logEl.children.length > 40) logEl.lastChild.remove(); }
+function say(m){ document.getElementById('vmMsg').textContent = m; }
+const balance = () => vm.inserted.reduce((s, d) => s + VAL[d], 0);
+function plan(amount){                                   // greedy, same as CashBox.plan()
+  const ch = {};
+  for (let i = DENOMS.length - 1; i >= 0 && amount > 0; i--){
+    const [d, v] = DENOMS[i], use = Math.min(Math.floor(amount / v), vm.box[d]);
+    if (use > 0){ ch[d] = use; amount -= use * v; }
+  }
+  return amount === 0 ? ch : null;
+}
+const fmt = ch => Object.entries(ch).map(([d, n]) => `${d}×${n}`).join(', ');
+function render(){
+  const st = document.getElementById('vmState'); st.textContent = vm.state; st.dataset.s = vm.state;
+  document.getElementById('vmBal').textContent = '₹' + balance();
+  const slots = document.getElementById('vmSlots'); slots.innerHTML = '';
+  vm.slots.forEach(s => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'vm-slot' + (s.qty ? '' : ' empty');
+    b.innerHTML = `<span class="vm-code">${s.code}</span><span class="vm-ic">${ICONS[s.name]}</span><b>${s.name}</b><span>₹${s.price} · ×${s.qty}</span>`;
+    b.addEventListener('click', () => { select(s.code); render(); });
+    slots.appendChild(b);
+  });
+  document.getElementById('vmBox').innerHTML = '<span style="color:var(--muted)">CashBox:</span> ' +
+    DENOMS.map(([d, v]) => `<span class="q" style="background:${vm.box[d] ? '#2b8a3e' : '#868e96'}">₹${v}×${vm.box[d]}</span>`).join('');
+  document.getElementById('vmRestock').hidden = vm.state !== 'MAINTENANCE';
+  document.getElementById('vmMaint').textContent = vm.state === 'MAINTENANCE' ? '✓ End maintenance' : '🔧 Maintenance';
+}
+function insert(d){
+  if (vm.state === 'MAINTENANCE'){ say('Out of service.'); log(`₹${VAL[d]} returned: out of service.`, 'MaintenanceState.insertMoney()'); return; }
+  vm.inserted.push(d);
+  const from = vm.state; vm.state = 'HAS_MONEY';
+  say(`Balance ₹${balance()}. Pick a product.`);
+  log(`Inserted ₹${VAL[d]}. Balance ₹${balance()}.`, `${from === 'IDLE' ? 'IdleState' : 'HasMoneyState'}.insertMoney(${d})` + (from === 'IDLE' ? ' → setState(HasMoney)' : ''));
+}
+function select(code){
+  if (vm.state === 'IDLE'){ say('Insert money first.'); log('Insert money first.', 'IdleState.selectProduct() → no state change'); return; }
+  if (vm.state === 'MAINTENANCE'){ say('Out of service.'); log('Out of service.', 'MaintenanceState.selectProduct()'); return; }
+  const s = vm.slots.find(x => x.code === code), bal = balance();
+  if (!s.qty){ say(`${s.name} is sold out.`); log(`${s.name} is sold out. Pick another or cancel.`, 'slot.isEmpty() → true; stay in HAS_MONEY'); return; }
+  if (bal < s.price){ say(`Insert ₹${s.price - bal} more.`); log(`${s.name} costs ₹${s.price}. Insert ₹${s.price - bal} more.`, 'balance < price; stay in HAS_MONEY'); return; }
+  vm.inserted.forEach(d => vm.box[d]++);                 // cashBox.addAll(inserted)
+  const change = bal - s.price, ch = plan(change);
+  if (!ch){
+    vm.inserted.forEach(d => vm.box[d]--);               // cashBox.removeAll(inserted)
+    say(`No change for ₹${change}. Exact amount or cancel.`);
+    log(`Cannot return ₹${change} change. Insert exact amount or cancel.`, 'cashBox.addAll(); canMakeChange() → false; removeAll()');
+    return;
+  }
+  vm.state = 'DISPENSING'; render();
+  Object.entries(ch).forEach(([d, n]) => vm.box[d] -= n);
+  s.qty--;
+  say(`Enjoy your ${s.name}!` + (change ? ` Change ₹${change}.` : ''));
+  log(`${ICONS[s.name]} Dispensed <b>${s.name}</b>.` + (change ? ` Change ₹${change}: ${fmt(ch)}.` : ' No change.'), 'setState(Dispensing) → slot.decrement(); cashBox.makeChange(); resetTransaction() → setState(Idle)');
+  vm.inserted = []; vm.state = 'IDLE';
+}
+function cancel(){
+  if (vm.state !== 'HAS_MONEY'){ log(vm.state === 'IDLE' ? 'Nothing to cancel.' : 'Out of service.', `${vm.state === 'IDLE' ? 'IdleState' : 'MaintenanceState'}.cancel()`); return; }
+  log(`Cancelled. Refund: ${vm.inserted.map(d => '₹' + VAL[d]).join(' + ')}.`, 'HasMoneyState.cancel() → resetTransaction() → setState(Idle)');
+  say('Refunded. Insert money.'); vm.inserted = []; vm.state = 'IDLE';
+}
+function vmReset(){
+  vm = {state: 'IDLE', inserted: [],
+    slots: [{code: 'A1', name: 'Coke', price: 25, qty: 5}, {code: 'A2', name: 'Lays', price: 20, qty: 3}, {code: 'B1', name: 'Water', price: 15, qty: 0}, {code: 'B2', name: 'KitKat', price: 30, qty: 2}],
+    box: {COIN_1: 2, COIN_2: 2, COIN_5: 1, COIN_10: 0, NOTE_20: 0, NOTE_50: 0, NOTE_100: 0}};
+  logEl.innerHTML = ''; say('Insert money.');
+  log('Machine ready. Same slots and cash as Main.java.', 'vm.addSlot(...) × 4; vm.loadCash(...) × 3');
+  render();
+}
+const coins = document.getElementById('vmCoins');
+DENOMS.forEach(([d, v]) => {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn vm-coin' + (v >= 20 ? ' note' : '');
+  b.textContent = '₹' + v; b.title = d;
+  b.addEventListener('click', () => { insert(d); render(); });
+  coins.appendChild(b);
+});
+document.getElementById('vmCancel').addEventListener('click', () => { cancel(); render(); });
+document.getElementById('vmMaint').addEventListener('click', () => {
+  if (vm.state === 'MAINTENANCE'){ vm.state = 'IDLE'; say('Insert money.'); log('Maintenance finished.', 'vm.endMaintenance() → IdleState'); }
+  else if (vm.state !== 'IDLE') log('Finish the current transaction first.', 'vm.startMaintenance() → status != IDLE');
+  else { vm.state = 'MAINTENANCE'; say('Out of service.'); log('Maintenance started.', 'vm.startMaintenance() → MaintenanceState'); }
+  render();
+});
+document.getElementById('vmRestock').addEventListener('click', () => { vm.slots[2].qty += 4; log('Restocked B1 (Water) +4.', 'vm.restock("B1", 4)'); render(); });
+document.getElementById('vmReset').addEventListener('click', vmReset);
+vmReset();
+
+/* ---------- code explorer ---------- */
+(function(){
+  const data = JSON.parse(document.getElementById('repoFiles').textContent);
+  const byPath = {}; data.files.forEach(f => byPath[f.path] = f);
+  const MAIN = data.main || 'Main.java';
+  const tree = document.getElementById('ideTree'), tabsEl = document.getElementById('ideTabs');
+  const codeEl = document.getElementById('ideCode'), gut = document.getElementById('ideGutter');
+  const title = document.getElementById('ideTitle'), badge = document.getElementById('ideBadge');
+  document.getElementById('ideCnt').textContent = data.files.length;
+  let open = [], current = null;
+  const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  // build folder tree
+  const root = {dirs: {}, files: []};
+  data.files.forEach(f => {
+    const parts = f.path.split('/'); let n = root;
+    parts.slice(0, -1).forEach(d => n = n.dirs[d] = n.dirs[d] || {dirs: {}, files: []});
+    n.files.push(f.path);
+  });
+  function render(node, parent){
+    Object.keys(node.dirs).sort().forEach(d => {
+      const row = document.createElement('button'); row.type = 'button'; row.className = 'ide-row open';
+      row.innerHTML = `<span class="car">▸</span>📁 ${d}`;
+      const kids = document.createElement('div'); kids.className = 'ide-kids';
+      row.addEventListener('click', () => { kids.hidden = !kids.hidden; row.classList.toggle('open', !kids.hidden); });
+      parent.append(row, kids); render(node.dirs[d], kids);
+    });
+    node.files.sort().forEach(p => {
+      const row = document.createElement('button'); row.type = 'button'; row.className = 'ide-row'; row.dataset.path = p;
+      row.innerHTML = `<span class="car"></span>☕ ${p.split('/').pop()}` + (p === MAIN ? '<span class="mb">MAIN</span>' : '');
+      row.title = p;
+      row.addEventListener('click', () => show(p));
+      parent.appendChild(row);
+    });
+  }
+  render(root, tree);
+
+  function show(p){
+    if (!open.includes(p)) open.push(p);
+    current = p;
+    const f = byPath[p], code = f.code.replace(/\n$/, '');
+    codeEl.innerHTML = window.Prism ? Prism.highlight(code, Prism.languages.java, 'java') : esc(code);
+    gut.textContent = code.split('\n').map((_, i) => i + 1).join('\n');
+    document.getElementById('ideScroll').scrollTop = 0;
+    title.textContent = p.split('/').pop(); badge.hidden = p !== MAIN;
+    tree.querySelectorAll('.ide-row[data-path]').forEach(r => r.classList.toggle('on', r.dataset.path === p));
+    tabsEl.innerHTML = '';
+    open.forEach(q => {
+      const t = document.createElement('button'); t.type = 'button'; t.className = 'ide-tab' + (q === p ? ' on' : '');
+      t.innerHTML = `☕ ${q.split('/').pop()} <span class="x" title="Close">✕</span>`;
+      t.addEventListener('click', e => {
+        if (e.target.classList.contains('x')){
+          open = open.filter(x => x !== q);
+          if (!open.length) open = [MAIN];
+          show(q === current ? open[open.length - 1] : current);
+        } else show(q);
+      });
+      tabsEl.appendChild(t);
+    });
+  }
+  show(MAIN);
+
+  document.getElementById('ideCopy').addEventListener('click', e => {
+    navigator.clipboard && navigator.clipboard.writeText(byPath[current].code).then(() => { e.target.textContent = '✓'; setTimeout(() => e.target.textContent = '⧉', 1200); });
+  });
+  document.getElementById('ideFs').addEventListener('click', () => {
+    const ide = document.getElementById('ide');
+    if (document.fullscreenElement) document.exitFullscreen(); else ide.requestFullscreen && ide.requestFullscreen();
+  });
+  const outBox = document.getElementById('ideOut'), outPre = document.getElementById('ideOutPre'), outTab = document.getElementById('ideOutTab');
+  function toggleOut(force){ outBox.hidden = force === undefined ? !outBox.hidden : !force; outTab.classList.toggle('on', !outBox.hidden); }
+  outTab.addEventListener('click', () => { if (!outPre.textContent) outPre.textContent = data.output; toggleOut(); });
+  let timer = null;
+  document.getElementById('ideRun').addEventListener('click', () => {
+    clearInterval(timer); toggleOut(true);
+    const lines = data.output.split('\n'); let i = 0; outPre.textContent = '';
+    timer = setInterval(() => {
+      outPre.textContent += lines.slice(i, i + 12).join('\n') + '\n'; i += 12;
+      outPre.scrollTop = outPre.scrollHeight;
+      if (i >= lines.length) clearInterval(timer);
+    }, 30);
+  });
+})();
+
+/* ---------- flip cards ---------- */
+const fcs = [...document.querySelectorAll('.fc')];
+fcs.forEach(c => c.addEventListener('click', () => c.classList.toggle('open')));
+document.getElementById('fcAll').addEventListener('click', e => {
+  const show = fcs.some(c => !c.classList.contains('open'));
+  fcs.forEach(c => c.classList.toggle('open', show));
+  e.target.textContent = show ? 'Hide all answers' : 'Show all answers';
+});
+
+})();
+</script>
+</body>
+</html>

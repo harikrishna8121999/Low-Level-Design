@@ -1,0 +1,1587 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventory Management System LLD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff; --bg-soft:#f7f8fa; --bg-card:#ffffff; --text:#1f2328; --muted:#5b6471; --border:#e4e7ec;
+  --accent:#5b5bd6; --accent-soft:#eef0ff; --accent-text:#4343b8;
+  --code-bg:#f6f8fa; --code-text:#24292f;
+  --ok:#1a7f37; --ok-soft:#e8f6ec; --bad:#cf222e; --bad-soft:#fdecee;
+  --warn:#9a6700; --warn-soft:#fff6dd; --info-soft:#eaf3ff; --info:#0b5cad;
+  --tok-kw:#cf222e; --tok-str:#0a3069; --tok-fn:#8250df; --tok-com:#6e7781; --tok-num:#0550ae; --tok-cls:#953800; --tok-ann:#116329;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --bg-soft:#151920; --bg-card:#171b22; --text:#e6e8eb; --muted:#9aa4b2; --border:#2a3039;
+    --accent:#8e8ff7; --accent-soft:#20223f; --accent-text:#b4b5ff;
+    --code-bg:#12161c; --code-text:#d6dbe1;
+    --ok:#4ac26b; --ok-soft:#12261a; --bad:#ff7b72; --bad-soft:#2d1517;
+    --warn:#e3b341; --warn-soft:#2a2210; --info-soft:#0f2136; --info:#79b8ff;
+    --tok-kw:#ff7b72; --tok-str:#a5d6ff; --tok-fn:#d2a8ff; --tok-com:#8b949e; --tok-num:#79c0ff; --tok-cls:#ffa657; --tok-ann:#7ee787;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --bg-soft:#151920; --bg-card:#171b22; --text:#e6e8eb; --muted:#9aa4b2; --border:#2a3039;
+  --accent:#8e8ff7; --accent-soft:#20223f; --accent-text:#b4b5ff;
+  --code-bg:#12161c; --code-text:#d6dbe1;
+  --ok:#4ac26b; --ok-soft:#12261a; --bad:#ff7b72; --bad-soft:#2d1517;
+  --warn:#e3b341; --warn-soft:#2a2210; --info-soft:#0f2136; --info:#79b8ff;
+  --tok-kw:#ff7b72; --tok-str:#a5d6ff; --tok-fn:#d2a8ff; --tok-com:#8b949e; --tok-num:#79c0ff; --tok-cls:#ffa657; --tok-ann:#7ee787;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.7 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--accent-text)}
+code,pre,.mono{font-family:"JetBrains Mono",Consolas,ui-monospace,monospace;font-variant-ligatures:none}
+:not(pre)>code{background:var(--code-bg);border:1px solid var(--border);padding:.08em .38em;border-radius:5px;font-size:.86em}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;height:56px;display:flex;align-items:center;gap:12px;padding:0 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.topbar .brand{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.topbar .crumb{color:var(--muted);font-size:14px}
+.topbar .sp{flex:1}
+.btn{font:inherit;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--bg-card);color:var(--text);padding:6px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--accent);color:var(--accent-text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.08);color:#fff}
+.progress{position:fixed;top:56px;left:0;height:2px;background:var(--accent);width:0;z-index:21}
+
+/* layout */
+.layout{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1440px;margin:0 auto}
+aside.toc{position:sticky;top:56px;height:calc(100vh - 56px);overflow:auto;padding:28px 12px 28px 20px;border-right:1px solid var(--border)}
+.toc h4{margin:0 0 10px 10px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.toc a{display:block;padding:6px 10px;border-radius:7px;font-size:14px;color:var(--muted);text-decoration:none;line-height:1.35}
+.toc a:hover{color:var(--text);background:var(--bg-soft)}
+.toc a.active{color:var(--accent-text);background:var(--accent-soft);font-weight:600}
+.toc .num{display:inline-block;width:22px;color:inherit;opacity:.7;font-variant-numeric:tabular-nums}
+main{padding:40px 48px 120px;min-width:0}
+main section{margin-bottom:64px}
+.prose{max-width:800px}
+h1{font-size:40px;line-height:1.15;letter-spacing:-.02em;margin:0 0 14px;font-weight:800}
+h2{font-size:28px;letter-spacing:-.01em;margin:0 0 16px;padding-top:8px;font-weight:750;line-height:1.25}
+h3{font-size:20px;margin:32px 0 10px;font-weight:700}
+h4{font-size:16px;margin:22px 0 6px}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 14px;padding-left:22px}
+li{margin:4px 0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 22px}
+.pill{font-size:12.5px;font-weight:600;border-radius:999px;padding:3px 10px;border:1px solid var(--border);background:var(--bg-soft);color:var(--muted)}
+.pill.easy{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.lead{font-size:18px;color:var(--muted)}
+.secnum{color:var(--accent);margin-right:8px}
+
+/* callouts */
+.callout{border:1px solid var(--border);border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:10px;padding:14px 16px;margin:18px 0}
+.callout.tip{border-left-color:var(--ok);background:var(--ok-soft)}
+.callout.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.callout.info{border-left-color:var(--info);background:var(--info-soft)}
+.callout b.t{display:block;margin-bottom:4px}
+.callout p:last-child,.callout ul:last-child{margin-bottom:0}
+
+/* chat Q&A */
+.chat{display:flex;flex-direction:column;gap:10px;margin:18px 0 22px}
+.msg{display:flex;gap:10px;align-items:flex-start;max-width:760px}
+.msg .av{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff}
+.msg.c .av{background:#5b5bd6}.msg.i .av{background:#e8590c}
+.msg .bub{border:1px solid var(--border);background:var(--bg-card);border-radius:12px;padding:9px 14px;box-shadow:var(--shadow)}
+.msg.i .bub{background:var(--bg-soft)}
+.msg .who{font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:1px}
+
+/* cards & grids */
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:16px 0}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0}
+.card{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--bg-card);box-shadow:var(--shadow)}
+.card h4{margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.card p{margin:0;color:var(--muted);font-size:14.5px}
+.card .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+.tag.used{background:var(--ok-soft);color:var(--ok)}
+.tag.could{background:var(--info-soft);color:var(--info)}
+.tag.avoid{background:var(--bad-soft);color:var(--bad)}
+
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin:14px 0 20px}
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;margin:14px 0 20px}
+.tablewrap table{margin:0}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--bg-soft);font-size:13px;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+
+/* nouns highlight */
+.noun{background:#fff1a8;color:#3d3200;border-radius:4px;padding:0 3px;font-weight:600}
+:root[data-theme="dark"] .noun{background:#4a3f0c;color:#ffe680}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .noun{background:#4a3f0c;color:#ffe680}}
+
+/* diagram frame */
+.figure{margin:20px 0 28px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--bg-card);box-shadow:var(--shadow)}
+.figure .fhead{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg-soft);flex-wrap:wrap}
+.figure .fhead b{font-size:14px}
+.figure .fhead .sp{flex:1}
+.figure .canvas{background:#fbfbfc;overflow:auto}
+.figure .canvas svg{display:block;width:100%;height:auto;min-width:860px;margin:0 auto}
+#flowSvg{max-width:900px}
+.figure:fullscreen{border-radius:0;display:flex;flex-direction:column}
+.figure:fullscreen .canvas{flex:1}
+.figure:fullscreen .canvas svg{height:100%;min-width:0}
+.figure .cap{padding:10px 14px;font-size:13.5px;color:var(--muted);border-top:1px solid var(--border)}
+
+/* code */
+.code{position:relative;margin:14px 0 20px;border:1px solid var(--border);border-radius:12px;background:var(--code-bg);overflow:hidden}
+.code .chead{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--border);font-size:12.5px;color:var(--muted);font-family:"JetBrains Mono",Consolas,monospace}
+.code .copy{font-size:12px;padding:3px 9px}
+pre{font-variant-ligatures:none;margin:0;padding:14px 16px;overflow:auto;font-size:13.3px;line-height:1.6;color:var(--code-text);tab-size:4}
+pre code{background:none;border:0;padding:0;font-size:inherit}
+.token.keyword,.token.boolean{color:var(--tok-kw)}
+.token.string,.token.char{color:var(--tok-str)}
+.token.function{color:var(--tok-fn)}
+.token.comment{color:var(--tok-com);font-style:italic}
+.token.number{color:var(--tok-num)}
+.token.class-name{color:var(--tok-cls)}
+.token.annotation,.token.punctuation.annotation{color:var(--tok-ann)}
+.token.operator{color:inherit}
+.why{font-size:14.5px;color:var(--muted);border-left:3px solid var(--border);padding:2px 0 2px 12px;margin:-6px 0 22px}
+
+/* serpentine mini grid */
+.serp{display:grid;grid-template-columns:repeat(4,44px);gap:4px;margin:10px 0}
+.serp div{height:44px;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:14px;background:var(--bg-soft);border:1px solid var(--border)}
+.serp div.r{background:var(--accent-soft);color:var(--accent-text)}
+.serpwrap{display:flex;gap:28px;align-items:center;flex-wrap:wrap;margin:10px 0 18px}
+
+/* simulator */
+.sim{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:22px;margin:16px 0 22px;align-items:start}
+.board{position:relative;aspect-ratio:1;width:100%;display:grid;grid-template-columns:repeat(10,1fr);border:2px solid var(--border);border-radius:12px;overflow:hidden;user-select:none}
+.board .cell{position:relative;font-size:10px;font-weight:600;color:#56606c;padding:2px 4px;border-right:1px solid rgba(0,0,0,.04);border-bottom:1px solid rgba(0,0,0,.04)}
+.board .cell.a{background:#f4f1ff}.board .cell.b{background:#ffffff}
+.board .cell.last{background:#fff4c2}
+.board .cell.flash{outline:3px solid #f59f00;outline-offset:-3px}
+.board svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.token-p{position:absolute;width:5.2%;aspect-ratio:1;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transform:translate(-50%,-50%);transition:left .45s ease,top .45s ease;z-index:3;display:grid;place-items:center;color:#fff;font-size:9px;font-weight:800}
+.simside{display:flex;flex-direction:column;gap:12px}
+.simctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.die{font-size:44px;line-height:1;width:58px;height:58px;display:grid;place-items:center;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)}
+.die.spin{animation:spin .35s ease}
+@keyframes spin{from{transform:rotate(-180deg) scale(.6)}to{transform:none}}
+.queue{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
+.queue .q{padding:3px 10px;border-radius:999px;color:#fff;font-weight:700;font-size:12px}
+.queue .q.front{outline:2px solid var(--text);outline-offset:1px}
+.log{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--bg-soft);font-size:13px}
+.log li{padding:7px 11px;border-bottom:1px solid var(--border);margin:0}
+.log li:first-child{background:var(--bg-card)}
+.log .call{font-family:"JetBrains Mono",Consolas,monospace;font-size:11.5px;color:var(--muted);display:block}
+select{font:inherit;font-size:13px;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text)}
+
+/* exercises */
+details{border:1px solid var(--border);border-radius:10px;margin:10px 0;background:var(--bg-card)}
+details>summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:14.5px;list-style:none;display:flex;gap:8px;align-items:center}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"▸";color:var(--accent);transition:transform .15s}
+details[open]>summary::before{transform:rotate(90deg)}
+details>.body{padding:0 14px 12px}
+.ex{border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin:16px 0;background:var(--bg-card);box-shadow:var(--shadow)}
+.ex h4{margin:0 0 6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lvl{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+.lvl.e{background:var(--ok-soft);color:var(--ok)}.lvl.m{background:var(--warn-soft);color:var(--warn)}.lvl.h{background:var(--bad-soft);color:var(--bad)}
+
+/* quiz */
+.quiz{counter-reset:q}
+.qbox{border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0;background:var(--bg-card)}
+.qbox .qq{font-weight:600;margin-bottom:8px}
+.qbox .opts{display:grid;gap:6px}
+.qbox button.opt{font:inherit;font-size:14.5px;text-align:left;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-soft);color:var(--text);cursor:pointer}
+.qbox button.opt:hover:not(:disabled){border-color:var(--accent)}
+.qbox button.opt.right{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:600}
+.qbox button.opt.wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.qbox .exp{display:none;margin-top:8px;font-size:14px;color:var(--muted)}
+.qbox.done .exp{display:block}
+.score{font-weight:700;color:var(--accent-text)}
+
+/* checklist */
+.check{list-style:none;padding:0}
+.check li{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--border)}
+.check input{margin-top:6px;accent-color:var(--accent);width:16px;height:16px}
+
+/* cheat sheet */
+.tldr{font-size:18px;line-height:1.6;border-radius:14px;padding:18px 22px;background:var(--accent-soft);border:1px solid var(--border);margin:6px 0 30px}
+.tldr-k{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-text);margin-bottom:4px}
+.tl{margin:0 0 10px}
+.tl-step{display:grid;grid-template-columns:40px minmax(0,1fr);gap:16px;position:relative;padding-bottom:26px}
+.tl-step::before{content:"";position:absolute;left:19px;top:42px;bottom:2px;width:2px;background:var(--border)}
+.tl-step:last-child::before{display:none}
+.tl-dot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#1f2328;border:2px solid}
+.tl-body{min-width:0}
+.tl-body h4{margin:7px 0 8px;font-size:17px}
+.say{margin:0;font-size:15.5px}
+.bucket{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 14px;font-size:15px}
+.bucket .bk{font-weight:700;color:var(--accent-text)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:14px;font-weight:600;padding:4px 12px;border-radius:999px;background:var(--bg-soft);border:1px solid var(--border)}
+.chip.hl{background:var(--accent-soft);color:var(--accent-text)}
+pre.tree{font-variant-ligatures:none;margin:0;padding:14px 16px;border-radius:12px;background:var(--code-bg);border:1px solid var(--border);font-size:13.5px;line-height:1.6;overflow:auto}
+.tree .tc{color:var(--tok-com)}
+#revSvg{min-width:0 !important}
+table.traps td:first-child{font-weight:600;width:45%}
+.term{display:block;font-size:12.5px;color:var(--muted)}
+.warm{list-style:none;counter-reset:w;padding:0;margin:8px 0 0}
+.warm li{counter-increment:w;display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;margin:0 0 8px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)}
+.warm li::before{content:counter(w);width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--accent-soft);color:var(--accent-text)}
+.warm li a{font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
+td b{white-space:nowrap}
+.pat{display:grid;gap:8px;margin:10px 0 20px;font-size:15px}
+.pat .tag{display:inline-block;width:64px;text-align:center;margin-right:10px;font-size:11px;font-weight:700;padding:2px 0;border-radius:999px;text-transform:uppercase}
+.fc-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.fc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fc{font:inherit;text-align:left;cursor:pointer;min-height:112px;padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;transition:border-color .15s}
+.fc:hover{border-color:var(--accent)}
+.fc .q{font-weight:600;font-size:15px}
+.fc .q::after{content:"tap to reveal";display:block;margin-top:6px;font-weight:500;font-size:12px;color:var(--muted)}
+.fc .a{display:none;font-size:14.5px;color:var(--text);border-top:1px dashed var(--border);padding-top:8px}
+.fc.open{border-color:var(--ok);background:var(--ok-soft)}
+.fc.open .q::after{display:none}
+.fc.open .a{display:block}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--border);padding-top:16px;margin-top:40px}
+
+/* code explorer */
+.ide{--i-bg:#1e1f22;--i-side:#191a1d;--i-bd:#2e3036;--i-tx:#d5d8dd;--i-mu:#868a91;--i-hl:#2b2d33;
+  display:grid;grid-template-columns:240px minmax(0,1fr);border:1px solid var(--i-bd);border-radius:14px;overflow:hidden;background:var(--i-bg);color:var(--i-tx);margin:18px 0 24px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.ide:fullscreen{border-radius:0;height:100vh}
+.ide-side{background:var(--i-side);border-right:1px solid var(--i-bd);padding:14px 10px;min-width:0}
+.ide-lang{border:1px solid var(--i-bd);border-radius:9px;padding:8px 12px;font-weight:700;font-size:14px;margin-bottom:14px}
+.ide-files{font-weight:700;font-size:14px;padding:4px 6px 10px;border-bottom:1px solid var(--i-bd);margin-bottom:8px}
+.ide-cnt{font-size:11px;background:var(--i-hl);border-radius:999px;padding:1px 8px;margin-left:4px;color:var(--i-mu)}
+.ide-tree{font-size:13.5px}
+.ide-row{display:flex;align-items:center;gap:6px;width:100%;font:inherit;font-size:13.5px;color:var(--i-tx);background:none;border:0;border-radius:7px;padding:5px 8px;cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ide-row:hover{background:var(--i-hl)}
+.ide-row.on{background:#1f3a2c;color:#5fd38d}
+.ide-row .car{display:inline-block;width:10px;color:var(--i-mu);transition:transform .15s}
+.ide-row.open .car{transform:rotate(90deg)}
+.ide-row .mb{margin-left:auto;font-size:10px;font-weight:800;color:#5fd38d;background:#1f3a2c;border:1px solid #2f5a42;border-radius:5px;padding:0 5px}
+.ide-kids{padding-left:14px}
+.ide-kids[hidden]{display:none}
+.ide-main{display:flex;flex-direction:column;min-width:0}
+.ide-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--i-bd)}
+.ide-head b{font-size:15px}
+.ide-fico{color:#5fd38d;font-family:"JetBrains Mono",Consolas,monospace;font-size:12px;font-weight:700}
+.ide-badge{font-size:10px;font-weight:800;color:#5fd38d;background:#1f3a2c;border:1px solid #2f5a42;border-radius:5px;padding:1px 6px}
+.ide-head .sp,.ide-foot .sp{flex:1}
+.ide-ib{background:none;border:1px solid transparent;color:var(--i-mu);font-size:16px;width:32px;height:30px;border-radius:7px;cursor:pointer}
+.ide-ib:hover{border-color:var(--i-bd);color:var(--i-tx)}
+.ide-tabs{display:flex;overflow-x:auto;background:var(--i-side);border-bottom:1px solid var(--i-bd);min-height:36px}
+.ide-tab{display:flex;align-items:center;gap:8px;font:inherit;font-size:13px;color:var(--i-mu);background:none;border:0;border-right:1px solid var(--i-bd);padding:8px 12px;cursor:pointer;white-space:nowrap}
+.ide-tab.on{color:var(--i-tx);background:var(--i-bg);box-shadow:inset 0 2px 0 #5fd38d}
+.ide-tab .x{opacity:.5;font-size:12px}.ide-tab .x:hover{opacity:1}
+.ide-code{display:flex;overflow:auto;height:480px;font-family:"JetBrains Mono",Consolas,monospace;font-size:13.5px;line-height:1.65;font-variant-ligatures:none}
+.ide:fullscreen .ide-code{height:auto;flex:1}
+.ide-gutter{position:sticky;left:0;flex:none;text-align:right;padding:12px 14px 12px 12px;color:#5c6068;background:var(--i-bg);border-right:1px solid var(--i-bd);user-select:none;white-space:pre}
+.ide-code pre{margin:0;padding:12px 18px;overflow:visible;color:var(--i-tx);font-size:inherit;line-height:inherit;flex:1}
+.ide .token.keyword,.ide .token.boolean{color:#cf8e6d}
+.ide .token.string{color:#6aab73}
+.ide .token.function{color:#56a8f5}
+.ide .token.comment{color:#7a7e85}
+.ide .token.number{color:#2aacb8}
+.ide .token.class-name{color:#d5d8dd}
+.ide .token.annotation,.ide .token.punctuation.annotation{color:#b3ae60}
+.ide .token.punctuation,.ide .token.operator{color:#bcbec4}
+.ide-foot{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--i-bd)}
+.ide-otab{font:inherit;font-size:13px;background:none;border:0;color:var(--i-mu);cursor:pointer;padding:4px 8px;border-radius:6px}
+.ide-otab.on{color:var(--i-tx);background:var(--i-hl)}
+.ide-run{font:inherit;font-size:14px;font-weight:700;background:#22a85a;color:#fff;border:0;border-radius:9px;padding:8px 18px;cursor:pointer}
+.ide-run:hover{background:#27bd66}
+.ide-out{border-top:1px solid var(--i-bd);background:#141517}
+.ide-out[hidden]{display:none}
+.ide-outnote{font-size:12px;color:var(--i-mu);padding:8px 14px;border-bottom:1px solid var(--i-bd)}
+.ide-outnote code{background:var(--i-hl);border-color:var(--i-bd);color:var(--i-tx)}
+.ide-out pre{margin:0;max-height:360px;overflow:auto;padding:12px 16px;font-size:12.5px;line-height:1.5;color:#c9ccd1;white-space:pre}
+@media (max-width:760px){
+  .ide{grid-template-columns:1fr}
+  .ide-side{border-right:0;border-bottom:1px solid var(--i-bd)}
+  .ide-tree{max-height:200px;overflow:auto}
+  .ide-code{height:380px}
+}
+.pill.med{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+/* inventory simulator */
+.invsim{display:grid;grid-template-columns:minmax(0,540px) minmax(0,1fr);gap:22px;margin:16px 0 22px;align-items:start}
+.inv-left{display:flex;flex-direction:column;gap:12px}
+.inv-left .tablewrap{margin:0}
+.stk th,.stk td{text-align:right;font-variant-numeric:tabular-nums;padding:9px 12px}
+.stk th:first-child,.stk td:first-child{text-align:left}
+.stk td.low{background:var(--bad-soft);color:var(--bad);font-weight:700}
+.stk td.flash{box-shadow:inset 0 0 0 2px #f59f00}
+.stk .lv{font-size:12px;color:var(--muted);display:block;font-weight:500}
+.inv-ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.inv-ctl label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted);font-weight:600}
+input[type=number]{font:inherit;font-size:13px;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);width:90px}
+.log li.alert{background:var(--bad-soft)}
+.log li.reorder{background:var(--ok-soft)}
+.mobile-toc{display:none}
+@media (max-width:1000px){
+  .layout{grid-template-columns:1fr}
+  aside.toc{display:none}
+  main{padding:24px 16px 80px}
+  .mobile-toc{display:block;margin-bottom:20px}
+  .sim,.invsim{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  h1{font-size:30px} h2{font-size:23px}
+  .grid2,.grid3,.fc-grid,.bucket{grid-template-columns:1fr}
+  .warm li{grid-template-columns:34px minmax(0,1fr)}
+  .warm li a{grid-column:2}
+  .topbar .crumb{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">📦 LLD Notes</div>
+  <div class="crumb">/ Medium / Inventory Management System</div>
+  <div class="sp"></div>
+  <button class="btn" id="themeBtn" type="button" aria-label="Toggle theme">◐ Theme</button>
+</div>
+<div class="progress" id="progress"></div>
+
+<div class="layout">
+<aside class="toc" id="toc">
+  <h4>On this page</h4>
+  <a href="#overview"><span class="num">0</span>The problem &amp; flow</a>
+  <a href="#warmup"><span class="num">▶</span>Try it first</a>
+  <a href="#requirements"><span class="num">1</span>Requirement gathering</a>
+  <a href="#entities"><span class="num">2</span>Core entities + breakdown</a>
+  <a href="#classes"><span class="num">3</span>Class diagram</a>
+  <a href="#flow"><span class="num">4</span>Ship-order flow</a>
+  <a href="#code"><span class="num">5</span>Working code</a>
+  <a href="#try"><span class="num">6</span>Run and Test</a>
+  <a href="#patterns"><span class="num">7</span>Design patterns</a>
+  <a href="#similar"><span class="num">8</span>Similar problems</a>
+  <a href="#recap"><span class="num">9</span>Revision cheat sheet</a>
+</aside>
+
+<main>
+<details class="mobile-toc"><summary>Contents</summary><div class="body" id="mtoc"></div></details>
+
+<!-- ============ 0. OVERVIEW ============ -->
+<section id="overview">
+<div class="prose">
+  <h1>Design an Inventory Management System</h1>
+  <div class="meta">
+    <span class="pill med">Medium</span>
+    <span class="pill">Java</span>
+    <span class="pill">~25 min read</span>
+    <span class="pill">Code: <code>org.nailyourinterview.lld.inventory_management</code></span>
+  </div>
+  <p class="lead">A company keeps products in several warehouses. Stock comes in from suppliers, goes out for orders and moves between warehouses. When stock gets low, the system alerts a manager and can reorder by itself.</p>
+  <p>The question tests three decisions. <b>Where does the quantity live?</b> In the warehouse, per SKU — not in the product. <b>Who reacts to low stock?</b> A list of <b>Observers</b>, so a new reaction is a new class. <b>How much to reorder?</b> A swappable <b>Strategy</b>. Every movement also goes into an audit log.</p>
+  <p>Every LLD answer follows the same 5 steps. Requirement gathering splits into 3 buckets: <b>extensibility</b>, <b>dynamic input</b> and <b>high traffic</b>. Click a step to jump to it.</p>
+</div>
+<div class="figure" id="figSteps">
+  <div class="fhead"><b>LLD interview flow — applied to Inventory Management</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figSteps">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="stepsSvg" data-name="lld-interview-flow.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="stepsSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-label="LLD interview flow"></svg></div>
+</div>
+</section>
+
+<!-- ============ WARM-UP ============ -->
+<section id="warmup">
+<div class="prose">
+  <h2><span class="secnum">▶</span>Try it first</h2>
+  <p>Before you read the solution, spend 10–15 minutes on your own. Use paper. A wrong first attempt is fine — it makes the answer stick when you read it.</p>
+  <h3>Step 0 · Run the warehouse</h3>
+  <p>Pick a product, a warehouse and a quantity. Then stock in, ship an order or transfer to the other warehouse. A red cell is at or below its reorder level. Try this: ship 5 laptops from BLR twice. When does the alert fire? Ship one more — does it fire again? Then switch the reorder rule and ship rice. The grey line under each log entry shows the method that does the work.</p>
+</div>
+
+<div class="invsim">
+  <div class="inv-left">
+    <div class="tablewrap"><table class="stk" id="stkTable"></table></div>
+    <div class="inv-ctl">
+      <label>Product <select id="sSku"></select></label>
+      <label>Warehouse <select id="sWh"><option>BLR</option><option>DEL</option></select></label>
+      <label>Quantity <input type="number" id="sQty" value="5"></label>
+      <label>Auto reorder <select id="sStrat"><option value="fixed">Fixed 20</option><option value="topup">Top up to 3× level</option><option value="off">Off (alert only)</option></select></label>
+    </div>
+    <div class="simctl">
+      <button class="btn" type="button" id="bIn">＋ Stock in</button>
+      <button class="btn primary" type="button" id="bOut">− Ship order</button>
+      <button class="btn" type="button" id="bMove">⇄ Transfer to other</button>
+      <button class="btn" type="button" id="bReset">↺ Reset</button>
+    </div>
+  </div>
+  <div class="simside">
+    <ul class="log" id="log"></ul>
+  </div>
+</div>
+
+<div class="prose">
+  <h3>Now design it yourself</h3>
+  <ol class="warm">
+    <li><span><b>Questions.</b> Write 5 questions you would ask the interviewer.</span><a href="#requirements">compare → 1.1</a></li>
+    <li><span><b>Buckets.</b> Sort the answers into core, extensibility, dynamic input and high traffic.</span><a href="#requirements">compare → 1</a></li>
+    <li><span><b>Entities.</b> List the classes and one job for each. Where does <code>quantity</code> go?</span><a href="#entities">compare → 2</a></li>
+    <li><span><b>Race.</b> Two orders want the last 3 laptops at the same time. Write how you stop an oversell.</span><a href="#code">compare → 5.2</a></li>
+    <li><span><b>Low stock.</b> Write <code>removeStock</code> in pseudocode, with the alert and the reorder. Fire the alert once, not on every sale.</span><a href="#flow">compare → 4</a></li>
+  </ol>
+</div>
+</section>
+
+<!-- ============ 1. REQUIREMENTS ============ -->
+<section id="requirements">
+<div class="prose">
+  <h2><span class="secnum">1</span>Requirement gathering</h2>
+  <p>Do not start with code. Ask questions first. Each answer removes a guess. Then sort the answers into 4 buckets: <b>core</b>, <b>extensibility</b>, <b>dynamic input</b> and <b>high traffic</b>.</p>
+
+  <h3>1.1 Ask questions</h3>
+  <div class="chat">
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>One warehouse or many?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Many. Use two for the demo: Bengaluru and Delhi.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>What is a product?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>SKU, name, category, price. The same product can sit in many warehouses.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Which operations?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Stock in from a supplier, stock out for an order, transfer between warehouses. Show stock per warehouse and in total.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>What happens when stock is low?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Each product has a reorder level. Alert the manager when stock drops to it. Also reorder by itself. The reorder rule will change.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Do we keep history?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Yes. Every movement must be in an audit log.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Orders, payments, supplier contracts?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Out of scope. An order is “take N units of SKU X from warehouse W”.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Can many orders arrive at the same time?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Yes. Never sell more than we have.</div></div>
+  </div>
+
+  <h3>1.2 Core functional requirements</h3>
+  <ul>
+    <li>Keep a catalog of products and a list of warehouses.</li>
+    <li>Stock in: add N units of a SKU to a warehouse.</li>
+    <li>Stock out: remove N units. Refuse when the warehouse has fewer than N.</li>
+    <li>Transfer N units from one warehouse to another.</li>
+    <li>Query: stock of a SKU per warehouse and in total; a stock report.</li>
+    <li>Low stock: when stock drops to the reorder level, alert and reorder. The reorder quantity comes from a rule.</li>
+    <li>Audit log: one record per movement (type, SKU, from, to, quantity).</li>
+    <li>Reject bad input: unknown SKU, unknown warehouse, quantity ≤ 0, transfer to the same warehouse.</li>
+  </ul>
+
+  <h3 id="extensibility">1.3 Extensibility (new features)</h3>
+  <p>Ask: <i>“Which features may come next?”</i> You do not build them now. You make sure each one is an <b>addition</b>, not a rewrite. For each feature, name the class that changes and the pattern that keeps the change small.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Follow-up question</th><th>What changes</th><th>Pattern / idea</th></tr></thead>
+    <tbody>
+      <tr><td>Another reorder rule (seasonal, forecast, EOQ)</td><td>New class that implements <code>ReplenishmentStrategy</code></td><td>Strategy</td></tr>
+      <tr><td>Change the rule at runtime (festive sale)</td><td><code>replenisher.setStrategy(...)</code></td><td>Strategy</td></tr>
+      <tr><td>Email, Slack or a purchase order on low stock</td><td>New class that implements <code>StockObserver</code>; register it</td><td>Observer</td></tr>
+      <tr><td>One order, pick the best warehouse</td><td>New <code>fulfilOrder(sku, qty)</code> + <code>WarehouseSelectionStrategy</code> (nearest, most stock)</td><td>Strategy</td></tr>
+      <tr><td>Cart holds stock for 10 minutes</td><td><code>Warehouse</code> keeps a <code>reserved</code> map: reserve → commit / release</td><td>—</td></tr>
+      <tr><td>Batches and expiry (groceries, medicine)</td><td>Stock per SKU becomes a list of batches; issue the oldest first (FEFO)</td><td>—</td></tr>
+      <tr><td>Undo a movement, replay history</td><td><code>StockTransaction</code> gets <code>reverse()</code>; rebuild stock from the log</td><td>Command / event sourcing</td></tr>
+      <tr><td>Perishable or serial-numbered products</td><td><code>Product</code> subclasses made by a <code>ProductFactory</code></td><td>Factory</td></tr>
+      <tr><td>Save to a database</td><td><code>ProductRepository</code>, <code>WarehouseRepository</code> behind interfaces</td><td>Repository</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>1.4 Dynamic (user input)</h3>
+  <p>Nothing is hard-coded in the classes. It comes in at runtime:</p>
+  <ul>
+    <li>Catalog and warehouses: <code>addProduct(new Product("LAP-1", "Laptop", ELECTRONICS, 55000, 5))</code>, <code>addWarehouse(new Warehouse("BLR", "Bengaluru"))</code>.</li>
+    <li>Movements: <code>addStock("BLR", "LAP-1", 12)</code>, <code>removeStock(...)</code>, <code>transfer("BLR", "DEL", "LAP-1", 10)</code>.</li>
+    <li>Reactions: <code>addObserver(new LowStockAlert())</code>.</li>
+    <li>Rule: <code>replenisher.setStrategy(new TopUpStrategy(3))</code>.</li>
+  </ul>
+  <div class="callout warn"><b class="t">Validate the input</b>The service rejects an unknown SKU, an unknown warehouse, a quantity of 0 or less, and a transfer to the same warehouse. A stock-out larger than the stock fails and changes nothing. Each check prints one clear message and returns early.</div>
+
+  <h3>1.5 High traffic (concurrency)</h3>
+  <p><b>Needed.</b> Many orders hit the same SKU at once. The classic bug is the <b>oversell</b>: two threads both read “3 left”, both take 3, stock goes to −3.</p>
+  <ul>
+    <li><b>In this code:</b> <code>Warehouse.removeStock</code> is <code>synchronized</code>. It checks and takes in one step and returns <code>-1</code> when there is not enough. No caller can split the check from the take.</li>
+    <li><b>Not yet safe:</b> the service uses a plain <code>HashMap</code> and <code>ArrayList</code>, and the transaction id is <code>history.size() + 1</code>. Under threads use <code>ConcurrentHashMap</code>, an <code>AtomicInteger</code> id and a concurrent queue for the log.</li>
+    <li><b>Transfer</b> is two steps (take from A, add to B). For a moment the units are “in transit”. Accept that, or lock both warehouses in a fixed order (by id) to avoid deadlock.</li>
+    <li><b>At real scale</b> the stock lives in a database. Use one conditional update: <code>UPDATE stock SET qty = qty - ? WHERE wh = ? AND sku = ? AND qty &gt;= ?</code>. One row changed = success. Run observers from an event queue, not inside the order call.</li>
+  </ul>
+
+  <h3>1.6 Non-functional requirements</h3>
+  <ul>
+    <li><b>Correct</b> — stock never goes negative; no oversell.</li>
+    <li><b>Auditable</b> — every movement has a record that never changes.</li>
+    <li><b>Fast reads</b> — stock lookup is a map lookup, O(1).</li>
+    <li><b>Extensible</b> — a new reorder rule or a new alert channel is one new class.</li>
+  </ul>
+  <div class="callout tip"><b class="t">Interview tip</b>Say early: “Product is catalog data. Quantity is warehouse data.” Then the multi-warehouse questions answer themselves.</div>
+</div>
+</section>
+
+<!-- ============ 2. ENTITIES ============ -->
+<section id="entities">
+<div class="prose">
+  <h2><span class="secnum">2</span>Core entities + breakdown</h2>
+  <p>Read the requirements again. Underline the nouns. Most nouns become classes. Verbs become methods.</p>
+  <div class="callout">
+    A company keeps <span class="noun">products</span> in several <span class="noun">warehouses</span>. Each warehouse holds a <span class="noun">quantity</span> per SKU. Staff <i>add</i> stock from a supplier, <i>remove</i> stock for an order and <i>transfer</i> stock. Each movement becomes a <span class="noun">transaction</span> in the log. When stock <i>drops</i> to the <span class="noun">reorder level</span>, an <span class="noun">alert</span> fires and a <span class="noun">replenisher</span> <i>orders</i> more, using a <span class="noun">reorder rule</span>.
+  </div>
+  <p>“Quantity” is not a class and not a field of <code>Product</code>: it is a <code>Map&lt;sku, Integer&gt;</code> inside <code>Warehouse</code>. “Supplier” and “order” are out of scope, so they are just the words <code>"supplier"</code> and <code>"customer"</code> in the log. “Alert” and “replenisher” both react to the same event, so they share one interface. “Reorder rule” changes, so it is an interface too.</p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Entity</th><th>Type</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td><b>InventoryService</b></td><td>Service</td><td>The one entry point. Holds catalog, warehouses, log and observers. Validates input, moves stock, writes the log, fires low-stock events.</td></tr>
+      <tr><td><b>Warehouse</b></td><td>Model</td><td>Id, city and <code>stock: Map&lt;sku, qty&gt;</code>. <code>removeStock</code> checks and takes in one <code>synchronized</code> step.</td></tr>
+      <tr><td><b>Product</b></td><td>Model</td><td>SKU, name, category, price, reorder level. No quantity.</td></tr>
+      <tr><td><b>StockTransaction</b></td><td>Value object</td><td>One movement: id, type, SKU, from, to, quantity. Never changes.</td></tr>
+      <tr><td><b>StockObserver</b></td><td>Interface</td><td><code>onLowStock(warehouse, product, quantity)</code>.</td></tr>
+      <tr><td><b>LowStockAlert</b></td><td>Observer</td><td>Prints the alert for the manager.</td></tr>
+      <tr><td><b>AutoReplenisher</b></td><td>Observer</td><td>Asks its strategy how much to order, then calls <code>addStock</code>.</td></tr>
+      <tr><td><b>ReplenishmentStrategy</b></td><td>Interface</td><td><code>reorderQuantity(product, current)</code> → units to order.</td></tr>
+      <tr><td><b>FixedQuantityStrategy</b> / <b>TopUpStrategy</b></td><td>Strategy</td><td>Always N units / fill up to <code>level × factor</code>.</td></tr>
+      <tr><td><b>Category</b>, <b>TransactionType</b></td><td>Enum</td><td>ELECTRONICS, GROCERY, CLOTHING · STOCK_IN, STOCK_OUT, TRANSFER.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn"><b class="t">Common mistake</b><code>Product.quantity</code>. It works for one warehouse and breaks at two: which warehouse does the number belong to? Keep the product as catalog data and store quantity per (warehouse, SKU).</div>
+</div>
+</section>
+
+<!-- ============ 3. CLASSES ============ -->
+<section id="classes">
+<div class="prose">
+  <h2><span class="secnum">3</span>Class diagram</h2>
+  <p>Read it from the centre: <b>InventoryService</b> has many <b>Warehouses</b>, <b>Products</b>, <b>StockTransactions</b> and <b>StockObservers</b>. On the right, two observers react to low stock; one of them has a <b>ReplenishmentStrategy</b>.</p>
+</div>
+
+<div class="figure" id="figClass">
+  <div class="fhead"><b>Class diagram</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figClass">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="classSvg" data-name="inventory-class-diagram.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="classSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1580 1060" role="img" aria-label="Class diagram of Inventory Management System"></svg></div>
+  <div class="cap">Read each line as a sentence: “InventoryService <b>has many</b> Warehouses”, “AutoReplenisher <b>is a</b> StockObserver”, “AutoReplenisher <b>has a</b> ReplenishmentStrategy”.</div>
+</div>
+
+<div class="prose">
+  <h3>Relationships, one by one</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>From → To</th><th>Relationship</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>InventoryService → Warehouse</td><td><b>has many</b> <span class="term">aggregation</span></td><td>Created outside and passed to <code>addWarehouse</code>.</td></tr>
+      <tr><td>InventoryService → Product</td><td><b>has many</b> <span class="term">aggregation</span></td><td>Created outside and passed to <code>addProduct</code>.</td></tr>
+      <tr><td>InventoryService → StockTransaction</td><td><b>has many</b> <span class="term">composition</span></td><td>Only the service creates log records, in <code>record()</code>. They live in its list.</td></tr>
+      <tr><td>InventoryService → StockObserver</td><td><b>has many</b> <span class="term">aggregation</span></td><td>Registered from outside with <code>addObserver</code>.</td></tr>
+      <tr><td>LowStockAlert, AutoReplenisher → StockObserver</td><td><b>is a</b> <span class="term">realization</span></td><td>Both implement <code>onLowStock</code>.</td></tr>
+      <tr><td>AutoReplenisher → ReplenishmentStrategy</td><td><b>has a</b> <span class="term">aggregation</span></td><td>Passed in; swapped with <code>setStrategy</code>.</td></tr>
+      <tr><td>AutoReplenisher → InventoryService</td><td><b>uses</b> <span class="term">association</span></td><td>Keeps a reference and calls <code>addStock</code> to reorder.</td></tr>
+      <tr><td>Fixed / TopUp → ReplenishmentStrategy</td><td><b>is a</b> <span class="term">realization</span></td><td>Implement <code>reorderQuantity</code>.</td></tr>
+      <tr><td>Product → Category, StockTransaction → TransactionType</td><td><b>uses</b> <span class="term">dependency</span></td><td>Enum fields.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout info"><b class="t">Who changes stock?</b>Only <code>Warehouse</code> changes its own map, and only <code>InventoryService</code> calls it. The replenisher does not touch a warehouse directly: it goes through <code>addStock</code>, so its reorder is validated and logged like any other stock-in.</div>
+</div>
+</section>
+
+<!-- ============ 4. FLOW ============ -->
+<section id="flow">
+<div class="prose">
+  <h2><span class="secnum">4</span>Ship-order flow</h2>
+  <p>The core operation is <code>removeStock</code>: validate, take the stock in one atomic step, log it, and fire the low-stock event only when the stock <b>crosses</b> the reorder level.</p>
+</div>
+<div class="figure" id="figFlow">
+  <div class="fhead"><b>InventoryService.removeStock() flowchart</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figFlow">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="flowSvg" data-name="inventory-remove-flow.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="flowSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960" role="img" aria-label="Flowchart of removeStock"></svg></div>
+  <div class="cap">Example: BLR has 9 laptops, level 5. Ship 5 → 4 left. 9 &gt; 5 and 4 ≤ 5, so the alert fires and 20 are reordered (now 24). Ship 2 more → 22: no event.</div>
+</div>
+</section>
+
+<!-- ============ 5. CODE ============ -->
+<section id="code">
+<div class="prose">
+  <h2><span class="secnum">5</span>Working code</h2>
+  <p>Build bottom-up: enums and <code>Product</code>, then <code>Warehouse</code> and <code>StockTransaction</code>, then the strategy and the observers, then <code>InventoryService</code>. The code uses Lombok (<code>@Getter</code>, <code>@Setter</code>, <code>@AllArgsConstructor</code>) to remove boilerplate.</p>
+
+  <h3>5.1 Enums and Product</h3>
+<div class="code"><div class="chead"><span>enums/Category.java · enums/TransactionType.java · model/Product.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public enum Category { ELECTRONICS, GROCERY, CLOTHING }
+
+public enum TransactionType { STOCK_IN, STOCK_OUT, TRANSFER }
+
+@Getter
+@AllArgsConstructor
+public class Product {
+    private final String sku;
+    private final String name;
+    private final Category category;
+    private final double price;
+    private final int reorderLevel;   // at or below this, stock is low
+}</code></pre></div>
+  <p class="why">No <code>quantity</code> field. A product is the same in every warehouse; only the count differs.</p>
+
+  <h3>5.2 Warehouse — the stock and the lock</h3>
+<div class="code"><div class="chead"><span>model/Warehouse.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public class Warehouse {
+    @Getter private final String id;
+    @Getter private final String city;
+    private final Map&lt;String, Integer&gt; stock = new HashMap&lt;&gt;();   // sku -&gt; quantity
+
+    public Warehouse(String id, String city) {
+        this.id = id;
+        this.city = city;
+    }
+
+    public synchronized int getQuantity(String sku) {
+        return stock.getOrDefault(sku, 0);
+    }
+
+    public synchronized int addStock(String sku, int quantity) {
+        return stock.merge(sku, quantity, Integer::sum);
+    }
+
+    // Check and take in one step, so two orders cannot take the same units.
+    // Returns the quantity left, or -1 when there is not enough.
+    public synchronized int removeStock(String sku, int quantity) {
+        int have = getQuantity(sku);
+        if (have &lt; quantity) return -1;
+        stock.put(sku, have - quantity);
+        return have - quantity;
+    }
+}</code></pre></div>
+  <p class="why"><b>Why <code>synchronized</code> here?</b> The check (<code>have &lt; quantity</code>) and the take (<code>put</code>) must be one step. If the service called <code>getQuantity</code> and then a separate “set”, two threads could both pass the check. <b>Why no <code>@Getter</code> on <code>stock</code>?</b> A getter would hand out the live map, and anyone could change it without the lock. <b>Why return the quantity left?</b> The caller needs “before” and “after” for the low-stock check, and a second read could already be stale.</p>
+
+  <h3>5.3 StockTransaction — the audit log</h3>
+<div class="code"><div class="chead"><span>model/StockTransaction.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">// One line in the audit trail. Never changed after it is written.
+@Getter
+@AllArgsConstructor
+public class StockTransaction {
+    private final int id;
+    private final TransactionType type;
+    private final String sku;
+    private final String from;
+    private final String to;
+    private final int quantity;
+
+    @Override
+    public String toString() {
+        return String.format("#%-2d %-9s %-6s %4d  %s -&gt; %s", id, type, sku, quantity, from, to);
+    }
+}</code></pre></div>
+
+  <h3>5.4 ReplenishmentStrategy — how much to order?</h3>
+<div class="code"><div class="chead"><span>strategy/ReplenishmentStrategy.java · FixedQuantityStrategy.java · TopUpStrategy.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public interface ReplenishmentStrategy {
+    // How many units to order when stock is low
+    int reorderQuantity(Product product, int currentQuantity);
+}
+
+// Always order the same batch size
+@AllArgsConstructor
+public class FixedQuantityStrategy implements ReplenishmentStrategy {
+    private final int quantity;
+
+    @Override
+    public int reorderQuantity(Product product, int currentQuantity) {
+        return quantity;
+    }
+}
+
+// Fill back up to factor x reorder level
+@AllArgsConstructor
+public class TopUpStrategy implements ReplenishmentStrategy {
+    private final int factor;
+
+    @Override
+    public int reorderQuantity(Product product, int currentQuantity) {
+        return product.getReorderLevel() * factor - currentQuantity;
+    }
+}</code></pre></div>
+  <p class="why">Rice: level 30, 25 left. Fixed → 20 (now 45). Top-up ×3 → 90 − 25 = 65 (now 90). Same event, different rule, no change anywhere else.</p>
+
+  <h3>5.5 Observers — who reacts to low stock?</h3>
+<div class="code"><div class="chead"><span>observer/StockObserver.java · LowStockAlert.java · AutoReplenisher.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public interface StockObserver {
+    void onLowStock(Warehouse warehouse, Product product, int quantity);
+}
+
+public class LowStockAlert implements StockObserver {
+    @Override
+    public void onLowStock(Warehouse warehouse, Product product, int quantity) {
+        System.out.println("ALERT: " + product.getName() + " is low in " + warehouse.getId()
+                + " (" + quantity + " left, reorder level " + product.getReorderLevel() + ")");
+    }
+}
+
+// Orders new stock from the supplier when stock is low. The strategy decides how much.
+@AllArgsConstructor
+public class AutoReplenisher implements StockObserver {
+    private final InventoryService inventory;
+    @Setter private ReplenishmentStrategy strategy;
+
+    @Override
+    public void onLowStock(Warehouse warehouse, Product product, int quantity) {
+        int amount = strategy.reorderQuantity(product, quantity);
+        if (amount &lt;= 0) return;
+        System.out.println("Reorder " + amount + " x " + product.getSku() + " for " + warehouse.getId()
+                + " (" + strategy.getClass().getSimpleName() + ")");
+        inventory.addStock(warehouse.getId(), product.getSku(), amount);
+    }
+}</code></pre></div>
+  <p class="why"><b>Observer + Strategy together.</b> The observer answers “<i>when</i> do we act?”; the strategy answers “<i>how much</i>?”. <code>amount &lt;= 0</code> guards a top-up rule when stock is already high.</p>
+
+  <h3>5.6 InventoryService — the entry point</h3>
+<div class="code"><div class="chead"><span>service/InventoryService.java (core methods)</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public class InventoryService {
+    private final Map&lt;String, Product&gt; products = new HashMap&lt;&gt;();          // sku -&gt; product
+    private final Map&lt;String, Warehouse&gt; warehouses = new LinkedHashMap&lt;&gt;(); // id -&gt; warehouse
+    private final List&lt;StockTransaction&gt; history = new ArrayList&lt;&gt;();
+    private final List&lt;StockObserver&gt; observers = new ArrayList&lt;&gt;();
+
+    public void addStock(String warehouseId, String sku, int quantity) {
+        Warehouse warehouse = findWarehouse(warehouseId);
+        if (warehouse == null || findProduct(sku) == null || !isPositive(quantity)) return;
+
+        int now = warehouse.addStock(sku, quantity);
+        record(TransactionType.STOCK_IN, sku, "supplier", warehouseId, quantity);
+        System.out.println("+" + quantity + " " + sku + " -&gt; " + warehouseId + " (now " + now + ")");
+    }
+
+    public boolean removeStock(String warehouseId, String sku, int quantity) {
+        Warehouse warehouse = findWarehouse(warehouseId);
+        Product product = findProduct(sku);
+        if (warehouse == null || product == null || !isPositive(quantity)) return false;
+
+        int left = warehouse.removeStock(sku, quantity);
+        if (left &lt; 0) {
+            System.out.println("Not enough " + sku + " in " + warehouseId + ": have "
+                    + warehouse.getQuantity(sku) + ", need " + quantity + ".");
+            return false;
+        }
+        record(TransactionType.STOCK_OUT, sku, warehouseId, "customer", quantity);
+        System.out.println("-" + quantity + " " + sku + " &lt;- " + warehouseId + " (now " + left + ")");
+        checkLowStock(warehouse, product, left + quantity, left);
+        return true;
+    }
+
+    public boolean transfer(String fromId, String toId, String sku, int quantity) {
+        if (fromId.equals(toId)) { System.out.println("Source and target are the same warehouse."); return false; }
+        Warehouse from = findWarehouse(fromId);
+        Warehouse to = findWarehouse(toId);
+        Product product = findProduct(sku);
+        if (from == null || to == null || product == null || !isPositive(quantity)) return false;
+
+        int left = from.removeStock(sku, quantity);
+        if (left &lt; 0) { System.out.println("Not enough " + sku + " in " + fromId + " to move " + quantity + "."); return false; }
+        int now = to.addStock(sku, quantity);
+        record(TransactionType.TRANSFER, sku, fromId, toId, quantity);
+        checkLowStock(from, product, left + quantity, left);
+        return true;
+    }
+
+    public int getTotalStock(String sku) {
+        return warehouses.values().stream().mapToInt(w -&gt; w.getQuantity(sku)).sum();
+    }
+
+    // Fire once, when the stock crosses the reorder level (not on every sale below it)
+    private void checkLowStock(Warehouse warehouse, Product product, int before, int after) {
+        int level = product.getReorderLevel();
+        if (before &gt; level &amp;&amp; after &lt;= level) {
+            observers.forEach(o -&gt; o.onLowStock(warehouse, product, after));
+        }
+    }
+
+    private void record(TransactionType type, String sku, String from, String to, int quantity) {
+        history.add(new StockTransaction(history.size() + 1, type, sku, from, to, quantity));
+    }
+
+    // addProduct, addWarehouse, addObserver, printStock, printHistory,
+    // findWarehouse / findProduct / isPositive print the error and return null / false
+}</code></pre></div>
+  <p class="why"><b>Why a crossing check?</b> “Alert when stock ≤ level” fires on every sale below the line: 4 left, 3 left, 2 left — three alerts and three reorders. “Was above, now at or below” fires once. <b>Why <code>LinkedHashMap</code> for warehouses?</b> The report keeps the order they were added.</p>
+
+  <h3>5.7 Main — the client</h3>
+<div class="code"><div class="chead"><span>Main.java (part)</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">InventoryService inventory = new InventoryService();
+AutoReplenisher replenisher = new AutoReplenisher(inventory, new FixedQuantityStrategy(20));
+inventory.addObserver(new LowStockAlert());
+inventory.addObserver(replenisher);
+
+inventory.addStock("BLR", "LAP-1", 12);
+inventory.removeStock("BLR", "LAP-1", 3);        // 9 left
+inventory.removeStock("BLR", "LAP-1", 5);        // 4 left: ALERT + reorder 20 -&gt; 24
+inventory.transfer("BLR", "DEL", "LAP-1", 10);   // BLR 12, DEL 14
+
+replenisher.setStrategy(new TopUpStrategy(3));   // swap the rule at runtime</code></pre></div>
+</div>
+</section>
+
+<!-- ============ 6. RUN AND TEST ============ -->
+<section id="try">
+<div class="prose">
+  <h2><span class="secnum">6</span>Run and Test</h2>
+  <p>The full <code>inventory_management</code> package, file by file. Click a file to open it. Start with <b>Main.java</b>, then follow the calls: <code>InventoryService.removeStock</code> → <code>Warehouse.removeStock</code> → <code>checkLowStock</code> → <code>AutoReplenisher</code> → <code>ReplenishmentStrategy</code>.
+  <a href="https://github.com/harikrishna8121999/Low-Level-Design/tree/main/src/main/java/org/nailyourinterview/lld/inventory_management" target="_blank" rel="noopener">Open on GitHub ↗</a> <span style="color:var(--muted)">(after you push it)</span></p>
+</div>
+
+<div class="ide" id="ide">
+  <aside class="ide-side">
+    <div class="ide-lang">☕ Java</div>
+    <div class="ide-files">📁 Files <span class="ide-cnt" id="ideCnt"></span></div>
+    <div class="ide-tree" id="ideTree"></div>
+  </aside>
+  <div class="ide-main">
+    <div class="ide-head">
+      <span class="ide-fico">{ }</span><b id="ideTitle"></b><span class="ide-badge" id="ideBadge">MAIN</span>
+      <span class="sp"></span>
+      <button class="ide-ib" type="button" id="ideCopy" title="Copy file">⧉</button>
+      <button class="ide-ib" type="button" id="ideFs" title="Full screen">⤢</button>
+    </div>
+    <div class="ide-tabs" id="ideTabs"></div>
+    <div class="ide-code" id="ideScroll"><div class="ide-gutter" id="ideGutter"></div><pre><code class="language-java" id="ideCode"></code></pre></div>
+    <div class="ide-foot">
+      <button class="ide-otab" type="button" id="ideOutTab">Output</button>
+      <span class="sp"></span>
+      <button class="ide-run" type="button" id="ideRun">▶ Run</button>
+    </div>
+    <div class="ide-out" id="ideOut" hidden>
+      <div class="ide-outnote">Recorded run of <code>Main</code> (a browser cannot run Java). Eight scenarios: set up, stock in, orders, crossing the reorder level, transfers, swapping the strategy, bad input, and the final report with the audit trail for <code>LAP-1</code>.</div>
+      <pre id="ideOutPre"></pre>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="repoFiles">{"files": [{"path": "enums/Category.java", "code": "package org.nailyourinterview.lld.inventory_management.enums;\n\npublic enum Category {\n    ELECTRONICS,\n    GROCERY,\n    CLOTHING\n}\n"}, {"path": "enums/TransactionType.java", "code": "package org.nailyourinterview.lld.inventory_management.enums;\n\npublic enum TransactionType {\n    STOCK_IN,\n    STOCK_OUT,\n    TRANSFER\n}\n"}, {"path": "model/Product.java", "code": "package org.nailyourinterview.lld.inventory_management.model;\n\nimport lombok.AllArgsConstructor;\nimport lombok.Getter;\nimport org.nailyourinterview.lld.inventory_management.enums.Category;\n\n@Getter\n@AllArgsConstructor\npublic class Product {\n    private final String sku;\n    private final String name;\n    private final Category category;\n    private final double price;\n    private final int reorderLevel;   // at or below this, stock is low\n}\n"}, {"path": "model/StockTransaction.java", "code": "package org.nailyourinterview.lld.inventory_management.model;\n\nimport lombok.AllArgsConstructor;\nimport lombok.Getter;\nimport org.nailyourinterview.lld.inventory_management.enums.TransactionType;\n\n// One line in the audit trail. Never changed after it is written.\n@Getter\n@AllArgsConstructor\npublic class StockTransaction {\n    private final int id;\n    private final TransactionType type;\n    private final String sku;\n    private final String from;\n    private final String to;\n    private final int quantity;\n\n    @Override\n    public String toString() {\n        return String.format(\"#%-2d %-9s %-6s %4d  %s -> %s\", id, type, sku, quantity, from, to);\n    }\n}\n"}, {"path": "model/Warehouse.java", "code": "package org.nailyourinterview.lld.inventory_management.model;\n\nimport lombok.Getter;\n\nimport java.util.HashMap;\nimport java.util.Map;\n\npublic class Warehouse {\n    @Getter private final String id;\n    @Getter private final String city;\n    private final Map<String, Integer> stock = new HashMap<>();   // sku -> quantity\n\n    public Warehouse(String id, String city) {\n        this.id = id;\n        this.city = city;\n    }\n\n    public synchronized int getQuantity(String sku) {\n        return stock.getOrDefault(sku, 0);\n    }\n\n    public synchronized int addStock(String sku, int quantity) {\n        return stock.merge(sku, quantity, Integer::sum);\n    }\n\n    // Check and take in one step, so two orders cannot take the same units.\n    // Returns the quantity left, or -1 when there is not enough.\n    public synchronized int removeStock(String sku, int quantity) {\n        int have = getQuantity(sku);\n        if (have < quantity) return -1;\n        stock.put(sku, have - quantity);\n        return have - quantity;\n    }\n}\n"}, {"path": "observer/AutoReplenisher.java", "code": "package org.nailyourinterview.lld.inventory_management.observer;\n\nimport lombok.AllArgsConstructor;\nimport lombok.Setter;\nimport org.nailyourinterview.lld.inventory_management.model.Product;\nimport org.nailyourinterview.lld.inventory_management.model.Warehouse;\nimport org.nailyourinterview.lld.inventory_management.service.InventoryService;\nimport org.nailyourinterview.lld.inventory_management.strategy.ReplenishmentStrategy;\n\n// Orders new stock from the supplier when stock is low. The strategy decides how much.\n@AllArgsConstructor\npublic class AutoReplenisher implements StockObserver {\n    private final InventoryService inventory;\n    @Setter private ReplenishmentStrategy strategy;\n\n    @Override\n    public void onLowStock(Warehouse warehouse, Product product, int quantity) {\n        int amount = strategy.reorderQuantity(product, quantity);\n        if (amount <= 0) return;\n        System.out.println(\"Reorder \" + amount + \" x \" + product.getSku() + \" for \" + warehouse.getId()\n                + \" (\" + strategy.getClass().getSimpleName() + \")\");\n        inventory.addStock(warehouse.getId(), product.getSku(), amount);\n    }\n}\n"}, {"path": "observer/LowStockAlert.java", "code": "package org.nailyourinterview.lld.inventory_management.observer;\n\nimport org.nailyourinterview.lld.inventory_management.model.Product;\nimport org.nailyourinterview.lld.inventory_management.model.Warehouse;\n\npublic class LowStockAlert implements StockObserver {\n\n    @Override\n    public void onLowStock(Warehouse warehouse, Product product, int quantity) {\n        System.out.println(\"ALERT: \" + product.getName() + \" is low in \" + warehouse.getId()\n                + \" (\" + quantity + \" left, reorder level \" + product.getReorderLevel() + \")\");\n    }\n}\n"}, {"path": "observer/StockObserver.java", "code": "package org.nailyourinterview.lld.inventory_management.observer;\n\nimport org.nailyourinterview.lld.inventory_management.model.Product;\nimport org.nailyourinterview.lld.inventory_management.model.Warehouse;\n\npublic interface StockObserver {\n    void onLowStock(Warehouse warehouse, Product product, int quantity);\n}\n"}, {"path": "service/InventoryService.java", "code": "package org.nailyourinterview.lld.inventory_management.service;\n\nimport org.nailyourinterview.lld.inventory_management.enums.TransactionType;\nimport org.nailyourinterview.lld.inventory_management.model.Product;\nimport org.nailyourinterview.lld.inventory_management.model.StockTransaction;\nimport org.nailyourinterview.lld.inventory_management.model.Warehouse;\nimport org.nailyourinterview.lld.inventory_management.observer.StockObserver;\n\nimport java.util.ArrayList;\nimport java.util.Comparator;\nimport java.util.HashMap;\nimport java.util.LinkedHashMap;\nimport java.util.List;\nimport java.util.Map;\n\npublic class InventoryService {\n    private final Map<String, Product> products = new HashMap<>();          // sku -> product\n    private final Map<String, Warehouse> warehouses = new LinkedHashMap<>(); // id -> warehouse\n    private final List<StockTransaction> history = new ArrayList<>();\n    private final List<StockObserver> observers = new ArrayList<>();\n\n    // ----- set up -----\n\n    public void addProduct(Product product) {\n        products.put(product.getSku(), product);\n        System.out.println(\"Product \" + product.getSku() + \" added: \" + product.getName());\n    }\n\n    public void addWarehouse(Warehouse warehouse) {\n        warehouses.put(warehouse.getId(), warehouse);\n        System.out.println(\"Warehouse \" + warehouse.getId() + \" added: \" + warehouse.getCity());\n    }\n\n    public void addObserver(StockObserver observer) {\n        observers.add(observer);\n    }\n\n    // ----- stock in: goods arrive from a supplier -----\n\n    public void addStock(String warehouseId, String sku, int quantity) {\n        Warehouse warehouse = findWarehouse(warehouseId);\n        if (warehouse == null || findProduct(sku) == null || !isPositive(quantity)) return;\n\n        int now = warehouse.addStock(sku, quantity);\n        record(TransactionType.STOCK_IN, sku, \"supplier\", warehouseId, quantity);\n        System.out.println(\"+\" + quantity + \" \" + sku + \" -> \" + warehouseId + \" (now \" + now + \")\");\n    }\n\n    // ----- stock out: an order ships to a customer -----\n\n    public boolean removeStock(String warehouseId, String sku, int quantity) {\n        Warehouse warehouse = findWarehouse(warehouseId);\n        Product product = findProduct(sku);\n        if (warehouse == null || product == null || !isPositive(quantity)) return false;\n\n        int left = warehouse.removeStock(sku, quantity);\n        if (left < 0) {\n            System.out.println(\"Not enough \" + sku + \" in \" + warehouseId + \": have \"\n                    + warehouse.getQuantity(sku) + \", need \" + quantity + \".\");\n            return false;\n        }\n        record(TransactionType.STOCK_OUT, sku, warehouseId, \"customer\", quantity);\n        System.out.println(\"-\" + quantity + \" \" + sku + \" <- \" + warehouseId + \" (now \" + left + \")\");\n        checkLowStock(warehouse, product, left + quantity, left);\n        return true;\n    }\n\n    // ----- transfer: move stock between two warehouses -----\n\n    public boolean transfer(String fromId, String toId, String sku, int quantity) {\n        if (fromId.equals(toId)) {\n            System.out.println(\"Source and target are the same warehouse.\");\n            return false;\n        }\n        Warehouse from = findWarehouse(fromId);\n        Warehouse to = findWarehouse(toId);\n        Product product = findProduct(sku);\n        if (from == null || to == null || product == null || !isPositive(quantity)) return false;\n\n        int left = from.removeStock(sku, quantity);\n        if (left < 0) {\n            System.out.println(\"Not enough \" + sku + \" in \" + fromId + \" to move \" + quantity + \".\");\n            return false;\n        }\n        int now = to.addStock(sku, quantity);\n        record(TransactionType.TRANSFER, sku, fromId, toId, quantity);\n        System.out.println(\"Moved \" + quantity + \" \" + sku + \": \" + fromId + \" (now \" + left + \") -> \"\n                + toId + \" (now \" + now + \")\");\n        checkLowStock(from, product, left + quantity, left);\n        return true;\n    }\n\n    // ----- queries -----\n\n    public int getTotalStock(String sku) {\n        return warehouses.values().stream().mapToInt(w -> w.getQuantity(sku)).sum();\n    }\n\n    public void printStock() {\n        StringBuilder head = new StringBuilder(String.format(\"%-6s %-9s\", \"SKU\", \"Name\"));\n        warehouses.keySet().forEach(id -> head.append(String.format(\" %5s\", id)));\n        System.out.println(head.append(\"  Total\"));\n\n        List<Product> sorted = products.values().stream().sorted(Comparator.comparing(Product::getSku)).toList();\n        for (Product p : sorted) {\n            StringBuilder row = new StringBuilder(String.format(\"%-6s %-9s\", p.getSku(), p.getName()));\n            warehouses.values().forEach(w -> row.append(String.format(\" %5d\", w.getQuantity(p.getSku()))));\n            System.out.println(row.append(String.format(\"  %5d\", getTotalStock(p.getSku()))));\n        }\n    }\n\n    public void printHistory(String sku) {\n        System.out.println(\"History of \" + sku + \":\");\n        history.stream().filter(t -> t.getSku().equals(sku)).forEach(t -> System.out.println(\"  \" + t));\n    }\n\n    // ----- helpers -----\n\n    // Fire once, when the stock crosses the reorder level (not on every sale below it)\n    private void checkLowStock(Warehouse warehouse, Product product, int before, int after) {\n        int level = product.getReorderLevel();\n        if (before > level && after <= level) {\n            observers.forEach(o -> o.onLowStock(warehouse, product, after));\n        }\n    }\n\n    private void record(TransactionType type, String sku, String from, String to, int quantity) {\n        history.add(new StockTransaction(history.size() + 1, type, sku, from, to, quantity));\n    }\n\n    private Warehouse findWarehouse(String id) {\n        Warehouse warehouse = warehouses.get(id);\n        if (warehouse == null) System.out.println(\"No warehouse \" + id + \".\");\n        return warehouse;\n    }\n\n    private Product findProduct(String sku) {\n        Product product = products.get(sku);\n        if (product == null) System.out.println(\"No product \" + sku + \".\");\n        return product;\n    }\n\n    private boolean isPositive(int quantity) {\n        if (quantity <= 0) {\n            System.out.println(\"Quantity must be positive, got \" + quantity + \".\");\n            return false;\n        }\n        return true;\n    }\n}\n"}, {"path": "strategy/FixedQuantityStrategy.java", "code": "package org.nailyourinterview.lld.inventory_management.strategy;\n\nimport lombok.AllArgsConstructor;\nimport org.nailyourinterview.lld.inventory_management.model.Product;\n\n// Always order the same batch size\n@AllArgsConstructor\npublic class FixedQuantityStrategy implements ReplenishmentStrategy {\n    private final int quantity;\n\n    @Override\n    public int reorderQuantity(Product product, int currentQuantity) {\n        return quantity;\n    }\n}\n"}, {"path": "strategy/ReplenishmentStrategy.java", "code": "package org.nailyourinterview.lld.inventory_management.strategy;\n\nimport org.nailyourinterview.lld.inventory_management.model.Product;\n\npublic interface ReplenishmentStrategy {\n    // How many units to order when stock is low\n    int reorderQuantity(Product product, int currentQuantity);\n}\n"}, {"path": "strategy/TopUpStrategy.java", "code": "package org.nailyourinterview.lld.inventory_management.strategy;\n\nimport lombok.AllArgsConstructor;\nimport org.nailyourinterview.lld.inventory_management.model.Product;\n\n// Fill back up to factor x reorder level\n@AllArgsConstructor\npublic class TopUpStrategy implements ReplenishmentStrategy {\n    private final int factor;\n\n    @Override\n    public int reorderQuantity(Product product, int currentQuantity) {\n        return product.getReorderLevel() * factor - currentQuantity;\n    }\n}\n"}, {"path": "Main.java", "code": "package org.nailyourinterview.lld.inventory_management;\n\nimport org.nailyourinterview.lld.inventory_management.enums.Category;\nimport org.nailyourinterview.lld.inventory_management.model.Product;\nimport org.nailyourinterview.lld.inventory_management.model.Warehouse;\nimport org.nailyourinterview.lld.inventory_management.observer.AutoReplenisher;\nimport org.nailyourinterview.lld.inventory_management.observer.LowStockAlert;\nimport org.nailyourinterview.lld.inventory_management.service.InventoryService;\nimport org.nailyourinterview.lld.inventory_management.strategy.FixedQuantityStrategy;\nimport org.nailyourinterview.lld.inventory_management.strategy.TopUpStrategy;\n\npublic class Main {\n    public static void main(String[] args) {\n        InventoryService inventory = new InventoryService();\n        AutoReplenisher replenisher = new AutoReplenisher(inventory, new FixedQuantityStrategy(20));\n        inventory.addObserver(new LowStockAlert());\n        inventory.addObserver(replenisher);\n\n        System.out.println(\"--- 1. Catalog and warehouses ---\");\n        inventory.addProduct(new Product(\"LAP-1\", \"Laptop\", Category.ELECTRONICS, 55000, 5));\n        inventory.addProduct(new Product(\"PHN-1\", \"Phone\", Category.ELECTRONICS, 20000, 10));\n        inventory.addProduct(new Product(\"RCE-5\", \"Rice 5kg\", Category.GROCERY, 450, 30));\n        inventory.addWarehouse(new Warehouse(\"BLR\", \"Bengaluru\"));\n        inventory.addWarehouse(new Warehouse(\"DEL\", \"Delhi\"));\n\n        System.out.println(\"--- 2. Stock arrives ---\");\n        inventory.addStock(\"BLR\", \"LAP-1\", 12);\n        inventory.addStock(\"BLR\", \"PHN-1\", 25);\n        inventory.addStock(\"BLR\", \"RCE-5\", 100);\n        inventory.addStock(\"DEL\", \"LAP-1\", 4);\n        inventory.addStock(\"DEL\", \"PHN-1\", 40);\n        inventory.printStock();\n\n        System.out.println(\"--- 3. Orders ship ---\");\n        inventory.removeStock(\"BLR\", \"LAP-1\", 3);\n        inventory.removeStock(\"BLR\", \"RCE-5\", 60);\n\n        System.out.println(\"--- 4. Cross the reorder level: alert + reorder ---\");\n        inventory.removeStock(\"BLR\", \"LAP-1\", 5);\n        inventory.removeStock(\"BLR\", \"LAP-1\", 2);\n\n        System.out.println(\"--- 5. Transfer between warehouses ---\");\n        inventory.transfer(\"BLR\", \"DEL\", \"LAP-1\", 10);\n        inventory.transfer(\"BLR\", \"DEL\", \"PHN-1\", 16);\n\n        System.out.println(\"--- 6. Swap the strategy at runtime ---\");\n        replenisher.setStrategy(new TopUpStrategy(3));\n        inventory.removeStock(\"BLR\", \"RCE-5\", 15);\n\n        System.out.println(\"--- 7. Invalid input ---\");\n        inventory.removeStock(\"DEL\", \"LAP-1\", 50);\n        inventory.removeStock(\"BLR\", \"XYZ-9\", 1);\n        inventory.addStock(\"MUM\", \"LAP-1\", 5);\n        inventory.addStock(\"BLR\", \"PHN-1\", 0);\n        inventory.transfer(\"DEL\", \"DEL\", \"LAP-1\", 1);\n\n        System.out.println(\"--- 8. Report and audit trail ---\");\n        inventory.printStock();\n        System.out.println(\"Total LAP-1: \" + inventory.getTotalStock(\"LAP-1\"));\n        inventory.printHistory(\"LAP-1\");\n    }\n}\n"}], "output": "--- 1. Catalog and warehouses ---\nProduct LAP-1 added: Laptop\nProduct PHN-1 added: Phone\nProduct RCE-5 added: Rice 5kg\nWarehouse BLR added: Bengaluru\nWarehouse DEL added: Delhi\n--- 2. Stock arrives ---\n+12 LAP-1 -> BLR (now 12)\n+25 PHN-1 -> BLR (now 25)\n+100 RCE-5 -> BLR (now 100)\n+4 LAP-1 -> DEL (now 4)\n+40 PHN-1 -> DEL (now 40)\nSKU    Name        BLR   DEL  Total\nLAP-1  Laptop       12     4     16\nPHN-1  Phone        25    40     65\nRCE-5  Rice 5kg    100     0    100\n--- 3. Orders ship ---\n-3 LAP-1 <- BLR (now 9)\n-60 RCE-5 <- BLR (now 40)\n--- 4. Cross the reorder level: alert + reorder ---\n-5 LAP-1 <- BLR (now 4)\nALERT: Laptop is low in BLR (4 left, reorder level 5)\nReorder 20 x LAP-1 for BLR (FixedQuantityStrategy)\n+20 LAP-1 -> BLR (now 24)\n-2 LAP-1 <- BLR (now 22)\n--- 5. Transfer between warehouses ---\nMoved 10 LAP-1: BLR (now 12) -> DEL (now 14)\nMoved 16 PHN-1: BLR (now 9) -> DEL (now 56)\nALERT: Phone is low in BLR (9 left, reorder level 10)\nReorder 20 x PHN-1 for BLR (FixedQuantityStrategy)\n+20 PHN-1 -> BLR (now 29)\n--- 6. Swap the strategy at runtime ---\n-15 RCE-5 <- BLR (now 25)\nALERT: Rice 5kg is low in BLR (25 left, reorder level 30)\nReorder 65 x RCE-5 for BLR (TopUpStrategy)\n+65 RCE-5 -> BLR (now 90)\n--- 7. Invalid input ---\nNot enough LAP-1 in DEL: have 14, need 50.\nNo product XYZ-9.\nNo warehouse MUM.\nQuantity must be positive, got 0.\nSource and target are the same warehouse.\n--- 8. Report and audit trail ---\nSKU    Name        BLR   DEL  Total\nLAP-1  Laptop       12    14     26\nPHN-1  Phone        29    56     85\nRCE-5  Rice 5kg     90     0     90\nTotal LAP-1: 26\nHistory of LAP-1:\n  #1  STOCK_IN  LAP-1    12  supplier -> BLR\n  #4  STOCK_IN  LAP-1     4  supplier -> DEL\n  #6  STOCK_OUT LAP-1     3  BLR -> customer\n  #8  STOCK_OUT LAP-1     5  BLR -> customer\n  #9  STOCK_IN  LAP-1    20  supplier -> BLR\n  #10 STOCK_OUT LAP-1     2  BLR -> customer\n  #11 TRANSFER  LAP-1    10  BLR -> DEL\n", "main": "Main.java"}</script>
+</section>
+
+<!-- ============ 7. PATTERNS ============ -->
+<section id="patterns">
+<div class="prose">
+  <h2><span class="secnum">7</span>Design patterns</h2>
+  <p>Be honest in the interview. Say which patterns the code <i>uses</i> and which ones you <i>would add</i>.</p>
+  <div class="grid2">
+    <div class="card"><h4>Observer <span class="tag used">used</span></h4><p><code>StockObserver</code> with <code>LowStockAlert</code> and <code>AutoReplenisher</code>. The service fires one event; it does not know who listens.</p></div>
+    <div class="card"><h4>Strategy <span class="tag used">used</span></h4><p><code>ReplenishmentStrategy</code>: <code>FixedQuantityStrategy</code>, <code>TopUpStrategy</code>. Swapped at runtime with <code>setStrategy</code>.</p></div>
+    <div class="card"><h4>Facade / service <span class="tag used">used</span></h4><p><code>InventoryService</code> is the one entry point. Callers never touch a <code>Warehouse</code> map directly.</p></div>
+    <div class="card"><h4>Immutable log <span class="tag used">used</span></h4><p><code>StockTransaction</code> has only final fields. The history is append-only — the base for audit and replay.</p></div>
+    <div class="card"><h4>Repository <span class="tag could">would add</span></h4><p>Move the maps behind <code>ProductRepository</code> / <code>WarehouseRepository</code>. The service then works with memory or a database.</p></div>
+    <div class="card"><h4>Factory <span class="tag could">would add</span></h4><p><code>ProductFactory.create(type, ...)</code> once there are perishable or serial-numbered products.</p></div>
+    <div class="card"><h4>Command <span class="tag could">would add</span></h4><p>Each movement as a command with <code>execute()</code> / <code>undo()</code>. Gives undo and a queue for one writer thread.</p></div>
+    <div class="card"><h4>Singleton service <span class="tag avoid">avoid</span></h4><p>Tempting (“one inventory”), but it blocks tests and makes the replenisher's back-reference global. Create it once and pass it in.</p></div>
+  </div>
+  <div class="callout"><b class="t">SOLID check</b>
+    <ul>
+      <li><b>S</b> — Warehouse: hold and lock stock. Service: validate, log, notify. Observer: react. Strategy: decide quantity.</li>
+      <li><b>O</b> — A new reorder rule or alert channel is a new class. Reservations would edit <code>Warehouse</code> — the known weak spot.</li>
+      <li><b>L</b> — Any <code>ReplenishmentStrategy</code> works in the replenisher; any <code>StockObserver</code> works in the service.</li>
+      <li><b>I</b> — Both interfaces have one method.</li>
+      <li><b>D</b> — The service depends on <code>StockObserver</code>; the replenisher on <code>ReplenishmentStrategy</code>. <i>But</i> the replenisher depends on the concrete <code>InventoryService</code> — an interface like <code>StockReceiver</code> would fix it.</li>
+    </ul>
+  </div>
+  <h3>Example: a new observer, no change to the service</h3>
+<div class="code"><div class="chead"><span>observer/EmailAlert.java (would add)</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public class EmailAlert implements StockObserver {
+    private final EmailClient email;
+    private final String manager;
+
+    public EmailAlert(EmailClient email, String manager) {
+        this.email = email;
+        this.manager = manager;
+    }
+
+    @Override
+    public void onLowStock(Warehouse warehouse, Product product, int quantity) {
+        email.send(manager, "Low stock: " + product.getName(),
+                quantity + " left in " + warehouse.getCity());
+    }
+}
+
+inventory.addObserver(new EmailAlert(emailClient, "ops@shop.com"));</code></pre></div>
+  <p class="why">No line in <code>InventoryService</code> changes. That is the Open/Closed principle at work.</p>
+</div>
+</section>
+
+<!-- ============ 8. SIMILAR ============ -->
+<section id="similar">
+<div class="prose">
+  <h2><span class="secnum">8</span>Similar problems</h2>
+  <p>A problem is similar only if the <b>inventory model carries over</b>: a catalog of items, a count per location, stock movements in and out with an audit log, and a reaction when a count gets low. The problems below share that skeleton. They are ranked by how much of this design you can reuse.</p>
+
+  <div class="callout info"><b class="t">The shared skeleton</b>
+    <p><code>Service.removeStock(location, item, n)</code> → <code>location.removeStock()</code> <b>check + take atomically</b> → <code>record(tx)</code> → <b>crossed the level?</b> → <code>observers.onLowStock()</code> → <code>strategy.reorderQuantity()</code>.</p>
+  </div>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Problem</th><th>Reuse from Inventory</th><th>New part to learn</th></tr></thead>
+    <tbody>
+      <tr><td><b>Warehouse Management System</b><br><span class="pill easy" style="margin-top:4px;display:inline-block">closest</span></td><td>All of it: catalog, stock per warehouse, movements, log, low-stock observers.</td><td>Location inside a warehouse (zone → rack → bin), put-away and pick lists, choosing a bin.</td></tr>
+      <tr><td><b>E-commerce stock with reservations</b> (Amazon / Flipkart checkout)</td><td><code>Warehouse</code> + atomic <code>removeStock</code>, observers, log.</td><td>Reserve on add-to-cart, commit on payment, release on timeout; choose the warehouse nearest to the customer.</td></tr>
+      <tr><td><b>Pharmacy / grocery store inventory</b></td><td>All of it, with one store or many.</td><td>Batches with expiry dates; issue the earliest expiry first (FEFO); an “expiring soon” observer.</td></tr>
+      <tr><td><b>Restaurant kitchen stock</b></td><td>Ingredients = products, kitchen = warehouse, low-stock reorder.</td><td>A recipe uses many ingredients: one order removes several SKUs, all or nothing.</td></tr>
+      <tr><td><b>Library management</b></td><td>Book = product, branch = warehouse, copies per branch, issue / return = out / in, log.</td><td>Copies are individual items (barcode), issued to a member with a due date and fines.</td></tr>
+      <tr><td><b>Vending machine inventory</b> (in this repo)</td><td>Product + quantity per slot, refuse when empty, low-stock refill.</td><td>One location only; the real problem is the state machine (idle → has money → dispense) and change.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip"><b class="t">Practice order</b>Inventory (this) → Grocery with batches (expiry) → E-commerce reservations (holds + timeout) → Restaurant (multi-SKU atomic) → Warehouse Management (bins and picking).</div>
+</div>
+</section>
+
+<!-- ============ 9. RECAP ============ -->
+<section id="recap">
+<div class="prose">
+  <h2><span class="secnum">9</span>Revision cheat sheet</h2>
+  <p style="color:var(--muted)">Read top to bottom, in the order you speak in the interview. Then close your eyes and use the flip cards.</p>
+
+  <div class="tldr">
+    <span class="tldr-k">In one breath</span>
+    <b>InventoryService</b> holds <b>Products</b> (catalog, no quantity), <b>Warehouses</b> (a <code>Map&lt;sku, qty&gt;</code> each), an append-only list of <b>StockTransactions</b> and a list of <b>StockObservers</b>. <code>removeStock</code> validates, takes stock in one <b>synchronized</b> check-and-take, logs it, and — only when stock <b>crosses</b> the reorder level — notifies observers: an alert, and an <b>AutoReplenisher</b> whose <b>ReplenishmentStrategy</b> says how much to reorder.
+  </div>
+
+  <div class="tl">
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#EFF1F4;border-color:#A9B1BD">1</div>
+      <div class="tl-body">
+        <h4>Understand the system</h4>
+        <p class="say">Supplier → stock in → warehouse → order → stock out → low? → alert + reorder. Every movement is logged.</p>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#FFF6C7;border-color:#FFD43B">2</div>
+      <div class="tl-body">
+        <h4>Requirement gathering</h4>
+        <div class="bucket">
+          <span class="bk">Core</span><span>products + warehouses · stock in / out / transfer · per-warehouse and total stock · low-stock alert + reorder · audit log · reject bad input</span>
+          <span class="bk">Extensibility</span><span>reorder rule · alert channel · pick a warehouse · reservations · batches / expiry · undo · persistence</span>
+          <span class="bk">Dynamic</span><span>catalog, warehouses, observers, strategy at runtime · all movements are calls</span>
+          <span class="bk">High traffic</span><span>yes — oversell: atomic check-and-take (synchronized / conditional DB update)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#FFE3E3;border-color:#F27474">3</div>
+      <div class="tl-body">
+        <h4>Core entities</h4>
+        <div class="chips">
+          <span class="chip">InventoryService</span><span class="chip hl">Warehouse (Map sku → qty)</span><span class="chip">Product</span><span class="chip">StockTransaction</span>
+          <span class="chip hl">StockObserver → LowStockAlert, AutoReplenisher</span><span class="chip hl">ReplenishmentStrategy → Fixed, TopUp</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#EFE7FF;border-color:#A98BF5">4</div>
+      <div class="tl-body">
+        <h4>Class diagram + flow</h4>
+        <div class="figure" id="figRev" style="margin:4px 0 0">
+          <div class="fhead"><b>Who owns what · who calls whom</b><span class="sp"></span>
+            <button class="btn" type="button" data-fs="figRev">⤢ Full screen</button>
+            <button class="btn primary" type="button" data-png="revSvg" data-name="inventory-revision.png">⬇ PNG</button>
+          </div>
+          <div class="canvas"><svg id="revSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" role="img" aria-label="Class diagram with call flow"></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#EFF1F4;border-color:#A9B1BD">5</div>
+      <div class="tl-body">
+        <h4>Working code — the only lines to remember</h4>
+<pre class="tree"><span class="tc">// Warehouse: check + take in one step</span>
+synchronized int removeStock(sku, n) {
+    int have = stock.getOrDefault(sku, 0);
+    if (have &lt; n) return -1;
+    stock.put(sku, have - n);  return have - n;
+}
+
+<span class="tc">// Service: validate, take, log, notify on crossing</span>
+int left = warehouse.removeStock(sku, n);
+if (left &lt; 0) return false;
+record(STOCK_OUT, sku, wh, "customer", n);
+if (left + n &gt; level &amp;&amp; left &lt;= level) observers.forEach(o -&gt; o.onLowStock(w, p, left));
+
+<span class="tc">// AutoReplenisher: when → observer, how much → strategy</span>
+inventory.addStock(wh, sku, strategy.reorderQuantity(p, left));</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Traps → fixes</h3>
+  <div class="tablewrap"><table class="traps">
+    <tbody>
+      <tr><td><code>Product.quantity</code> → breaks with two warehouses</td><td>Quantity per (warehouse, SKU) in <code>Warehouse.stock</code> (done)</td></tr>
+      <tr><td>Check in one call, take in another → oversell under threads</td><td>One <code>synchronized</code> check-and-take that returns <code>-1</code> (done)</td></tr>
+      <tr><td>Alert on every sale below the level → spam and many reorders</td><td>Fire only on the crossing: before &gt; level ≥ after (done)</td></tr>
+      <tr><td>The crossing check misses stock that <i>starts</i> low: DEL gets 4 laptops (level 5) and never alerts</td><td>Also check after stock-in, or run a daily scan of all stock</td></tr>
+      <tr><td>The replenisher adds stock at once; a real supplier takes days, and a second dip reorders again</td><td>Create a <code>PurchaseOrder</code> (PENDING); skip the reorder while one is open; stock-in on delivery</td></tr>
+      <tr><td>Observers run inside <code>removeStock</code>; a slow email blocks the order</td><td>Publish an event to a queue; handle it on another thread</td></tr>
+      <tr><td><code>history.size() + 1</code> id and plain <code>ArrayList</code> / <code>HashMap</code> are not thread-safe</td><td><code>AtomicInteger</code>, <code>ConcurrentHashMap</code>, a concurrent log</td></tr>
+      <tr><td>Transfer is two steps; units are “in transit” for a moment</td><td>Accept it, or lock both warehouses in id order (no deadlock)</td></tr>
+      <tr><td><code>addProduct</code> with an existing SKU silently replaces it</td><td><code>putIfAbsent</code> and reject the duplicate</td></tr>
+      <tr><td>Top-up when stock is already high → negative order</td><td>Replenisher skips <code>amount &lt;= 0</code> (done)</td></tr>
+      <tr><td>Unknown SKU / warehouse, quantity ≤ 0, transfer to self</td><td>Validated in the service (done)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Patterns in one look</h3>
+  <div class="pat">
+    <div><span class="tag used">used</span>Observer (low stock) · Strategy (reorder quantity) · service facade · immutable audit log</div>
+    <div><span class="tag could">add</span>Repository (storage) · Factory (product types) · Command (undo, single writer)</div>
+    <div><span class="tag avoid">avoid</span>Singleton service · <code>Product.quantity</code> · alert-on-every-sale</div>
+  </div>
+
+  <h3>Test yourself</h3>
+  <div class="fc-bar">
+    <span style="color:var(--muted);font-size:14px">Say the answer out loud first. Then tap the card.</span>
+    <button class="btn" type="button" id="fcAll">Show all answers</button>
+  </div>
+  <div class="fc-grid" id="fcGrid">
+    <button class="fc" type="button"><span class="q">Where does the quantity live, and why?</span><span class="a">In <code>Warehouse.stock: Map&lt;sku, qty&gt;</code>. A product is the same everywhere; only the count per warehouse differs.</span></button>
+    <button class="fc" type="button"><span class="q">How do you stop an oversell?</span><span class="a">Check and take in one atomic step: a <code>synchronized</code> <code>removeStock</code> that returns <code>-1</code> when short. In a DB: <code>UPDATE … SET qty = qty - n WHERE qty &gt;= n</code>.</span></button>
+    <button class="fc" type="button"><span class="q">When does the low-stock event fire?</span><span class="a">Only when stock crosses the level: before &gt; level and after ≤ level. Not on every sale below it.</span></button>
+    <button class="fc" type="button"><span class="q">BLR has 9 laptops, level 5, Fixed 20. Ship 5, then 2. Stock?</span><span class="a">9 → 4 (crossed: alert, reorder 20) → 24 → 22. The second sale fires nothing.</span></button>
+    <button class="fc" type="button"><span class="q">Rice: level 30, 25 left, TopUp ×3. Reorder?</span><span class="a">30 × 3 − 25 = 65 → stock 90.</span></button>
+    <button class="fc" type="button"><span class="q">Observer vs Strategy here?</span><span class="a">Observer: <i>who</i> reacts to low stock (alert, replenisher, email). Strategy: <i>how much</i> the replenisher orders.</span></button>
+    <button class="fc" type="button"><span class="q">Why does the replenisher call <code>addStock</code>, not the warehouse?</span><span class="a">So the reorder is validated and logged like any other stock-in. Only the service changes warehouses.</span></button>
+    <button class="fc" type="button"><span class="q">Is transfer atomic?</span><span class="a">No. Take from A, then add to B. Units are briefly in transit. Fix: lock both warehouses in id order, or accept it.</span></button>
+  </div>
+</div>
+<footer class="prose">Notes for revision. Code in <code>Low-Level-Design/src/main/java/org/nailyourinterview/lld/inventory_management</code>. Layout inspired by the AlgoMaster LLD format.</footer>
+</section>
+
+</main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+<script>
+(function(){
+/* ---------- theme ---------- */
+const root = document.documentElement;
+try { const t = localStorage.getItem('sl-theme'); if (t) root.dataset.theme = t; } catch(e){}
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('sl-theme', root.dataset.theme); } catch(e){}
+});
+
+/* ---------- toc, scrollspy, progress ---------- */
+document.getElementById('mtoc').innerHTML = document.getElementById('toc').innerHTML.replace(/<h4>.*?<\/h4>/,'');
+const links = [...document.querySelectorAll('#toc a')];
+const obs = new IntersectionObserver(es => {
+  es.forEach(e => { if (e.isIntersecting) links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id)); });
+}, { rootMargin: '-30% 0px -65% 0px' });
+document.querySelectorAll('main section').forEach(s => obs.observe(s));
+const bar = document.getElementById('progress');
+addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - innerHeight;
+  bar.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%';
+}, { passive: true });
+
+/* ---------- copy buttons ---------- */
+document.querySelectorAll('.code .copy').forEach(b => b.addEventListener('click', () => {
+  const txt = b.closest('.code').querySelector('code').innerText;
+  navigator.clipboard && navigator.clipboard.writeText(txt).then(() => { b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1200); });
+}));
+
+/* ---------- SVG diagram engine (miro-style) ---------- */
+const NS = 'http://www.w3.org/2000/svg';
+const FONT = "Inter, 'Segoe UI', Arial, sans-serif";
+const MONO = "'JetBrains Mono', Consolas, 'Courier New', monospace";
+function el(tag, attrs, parent){ const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; }
+function txt(parent, x, y, s, attrs){ const t = el('text', Object.assign({x, y, style: 'font-variant-ligatures:none'}, attrs || {}), parent); t.textContent = s; return t; }
+
+function setupCanvas(svg){
+  const defs = el('defs', {}, svg);
+  const pat = el('pattern', {id: svg.id + '-dots', width: 22, height: 22, patternUnits: 'userSpaceOnUse'}, defs);
+  el('circle', {cx: 2, cy: 2, r: 1.2, fill: '#d5d9e0'}, pat);
+  const f = el('filter', {id: svg.id + '-sh', x: '-10%', y: '-10%', width: '130%', height: '140%'}, defs);
+  el('feDropShadow', {dx: 0, dy: 3, stdDeviation: 4, 'flood-color': '#1f2a44', 'flood-opacity': .14}, f);
+  const vb = svg.viewBox.baseVal;
+  el('rect', {x: 0, y: 0, width: vb.width, height: vb.height, fill: '#fbfbfc'}, svg);
+  el('rect', {x: 0, y: 0, width: vb.width, height: vb.height, fill: `url(#${svg.id}-dots)`}, svg);
+  return { edges: el('g', {}, svg), nodes: el('g', {}, svg), deco: el('g', {}, svg), labels: el('g', {}, svg) };
+}
+
+const PALETTE = {
+  yellow: ['#FFF6C7', '#FFD43B', '#8a6d00'],
+  blue:   ['#E3EEFF', '#7DAEF8', '#1d4f99'],
+  sky:    ['#EAF4FF', '#A8CCFB', '#1d4f99'],
+  green:  ['#E2F7E7', '#69C985', '#1b6b34'],
+  purple: ['#EFE7FF', '#A98BF5', '#4b2ea3'],
+  orange: ['#FFEADB', '#FFA463', '#8a3b00'],
+  red:    ['#FFE3E3', '#F27474', '#8f1d1d'],
+  teal:   ['#DBF7EF', '#45C9A4', '#0d6650'],
+  pink:   ['#FDE6F4', '#EA82C0', '#8a1e5c'],
+  gray:   ['#EFF1F4', '#A9B1BD', '#3d4450']
+};
+
+function classBox(g, svgId, b){
+  const [body, head, ink] = PALETTE[b.c];
+  const LH = 17, PAD = 8, headH = b.st ? 48 : 34;
+  const fH = b.f.length ? b.f.length * LH + PAD * 2 : 0;
+  const mH = b.m.length ? b.m.length * LH + PAD * 2 : 0;
+  const h = headH + fH + mH;
+  const grp = el('g', {transform: `translate(${b.x},${b.y})`, filter: `url(#${svgId}-sh)`}, g);
+  el('rect', {width: b.w, height: h, rx: 12, fill: body, stroke: head, 'stroke-width': 1.5}, grp);
+  el('path', {d: `M0 12 A12 12 0 0 1 12 0 H${b.w - 12} A12 12 0 0 1 ${b.w} 12 V${headH} H0 Z`, fill: head}, grp);
+  if (b.st) txt(grp, b.w / 2, 18, b.st, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 11.5, 'font-style': 'italic', fill: '#1f2328', opacity: .75});
+  txt(grp, b.w / 2, b.st ? 38 : 23, b.name, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 16, 'font-weight': 800, fill: '#1f2328', 'font-style': b.abs ? 'italic' : 'normal'});
+  let y = headH;
+  if (b.f.length){
+    b.f.forEach((s, i) => txt(grp, 12, y + PAD + LH * (i + 1) - 4, s, {'font-family': MONO, 'font-size': 12.5, fill: ink}));
+    y += fH;
+    if (b.m.length) el('line', {x1: 0, y1: y, x2: b.w, y2: y, stroke: head, 'stroke-width': 1}, grp);
+  }
+  b.m.forEach((s, i) => txt(grp, 12, y + PAD + LH * (i + 1) - 4, s, {'font-family': MONO, 'font-size': 12.5, fill: '#1f2328'}));
+  b.h = h;
+}
+
+function roundedPath(pts, r){
+  if (pts.length < 3) return `M${pts[0][0]} ${pts[0][1]} L${pts[1][0]} ${pts[1][1]}`;
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++){
+    const [px, py] = pts[i - 1], [cx, cy] = pts[i], [nx, ny] = pts[i + 1];
+    const l1 = Math.hypot(cx - px, cy - py), l2 = Math.hypot(nx - cx, ny - cy);
+    const rr = Math.min(r, l1 / 2, l2 / 2);
+    const ax = cx - (cx - px) / l1 * rr, ay = cy - (cy - py) / l1 * rr;
+    const bx = cx + (nx - cx) / l2 * rr, by = cy + (ny - cy) / l2 * rr;
+    d += ` L${ax} ${ay} Q${cx} ${cy} ${bx} ${by}`;
+  }
+  const last = pts[pts.length - 1];
+  return d + ` L${last[0]} ${last[1]}`;
+}
+function unit(a, b){ const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; }
+
+function edge(L, e){
+  const color = e.color || '#4a5263';
+  const dashed = e.kind === 'dep';
+  el('path', {d: roundedPath(e.p, 14), fill: 'none', stroke: color, 'stroke-width': 1.8, 'stroke-dasharray': dashed ? '6 5' : 'none', 'stroke-linecap': 'round'}, L.edges);
+  const p0 = e.p[0], p1 = e.p[1], pn = e.p[e.p.length - 1], pm = e.p[e.p.length - 2];
+  if (e.kind === 'comp' || e.kind === 'agg'){
+    const [ux, uy] = unit(p0, p1), vx = -uy, vy = ux;
+    const pt = (a, b) => `${p0[0] + ux * a + vx * b},${p0[1] + uy * a + vy * b}`;
+    el('polygon', {points: [pt(0, 0), pt(9, 6), pt(18, 0), pt(9, -6)].join(' '), fill: e.kind === 'comp' ? color : '#ffffff', stroke: color, 'stroke-width': 1.6}, L.deco);
+  }
+  if (e.kind === 'inh'){
+    const [ux, uy] = unit(pm, pn), vx = -uy, vy = ux;
+    const pt = (a, b) => `${pn[0] - ux * a + vx * b},${pn[1] - uy * a + vy * b}`;
+    el('polygon', {points: [pt(0, 0), pt(16, 9), pt(16, -9)].join(' '), fill: '#ffffff', stroke: color, 'stroke-width': 1.6}, L.deco);
+  }
+  if (e.kind === 'dep' || e.kind === 'assoc'){
+    const [ux, uy] = unit(pm, pn), vx = -uy, vy = ux;
+    const pt = (a, b) => `${pn[0] - ux * a + vx * b},${pn[1] - uy * a + vy * b}`;
+    el('polyline', {points: [pt(12, 7), pt(0, 0), pt(12, -7)].join(' '), fill: 'none', stroke: color, 'stroke-width': 1.8, 'stroke-linejoin': 'round', 'stroke-linecap': 'round'}, L.deco);
+  }
+  if (e.kind === 'flow'){
+    const [ux, uy] = unit(pm, pn), vx = -uy, vy = ux;
+    const pt = (a, b) => `${pn[0] - ux * a + vx * b},${pn[1] - uy * a + vy * b}`;
+    el('polygon', {points: [pt(0, 0), pt(12, 6), pt(12, -6)].join(' '), fill: color}, L.deco);
+  }
+  if (e.kind === 'merge') el('circle', {cx: pn[0], cy: pn[1], r: 4, fill: color}, L.deco);
+  if (e.label) label(L, e.label[0], e.label[1], e.label[2], e.labelColor, e.labelSize);
+}
+function label(L, x, y, s, color, size){
+  const t = txt(L.labels, x, y + (size ? size / 3 : 4), s, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': size || 12, 'font-weight': 600, fill: color || '#3d4450'});
+  const bb = t.getBBox();
+  const r = el('rect', {x: bb.x - 7, y: bb.y - 3, width: bb.width + 14, height: bb.height + 6, rx: 9, fill: '#ffffff', stroke: '#d9dde4'});
+  L.labels.insertBefore(r, t);
+}
+function sticky(L, svgId, x, y, w, h, color, title, lines, rot, fs){
+  fs = fs || 13;
+  const g = el('g', {transform: `translate(${x},${y}) rotate(${rot || 0})`, filter: `url(#${svgId}-sh)`}, L.nodes);
+  el('rect', {width: w, height: h, rx: 4, fill: color}, g);
+  txt(g, 14, 12 + fs + 1, title, {'font-family': FONT, 'font-size': fs + 1, 'font-weight': 800, fill: '#1f2328'});
+  lines.forEach((s, i) => txt(g, 14, 24 + fs * 2 + i * fs * 1.45, s, {'font-family': FONT, 'font-size': fs, fill: '#2f3540'}));
+  return g;
+}
+
+/* ---------- class diagram ---------- */
+(function(){
+  const svg = document.getElementById('classSvg');
+  const L = setupCanvas(svg);
+  txt(L.labels, 40, 34, 'Inventory Management System — Class Diagram', {'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+  const boxes = [
+    {name: 'InventoryService', st: '«service»', x: 500, y: 70, w: 420, c: 'yellow', f: ['- products: Map<String, Product>', '- warehouses: Map<String, Warehouse>', '- history: List<StockTransaction>', '- observers: List<StockObserver>'], m: ['+ addProduct(Product)', '+ addWarehouse(Warehouse)', '+ addObserver(StockObserver)', '+ addStock(warehouseId, sku, qty)', '+ removeStock(warehouseId, sku, qty): boolean', '+ transfer(from, to, sku, qty): boolean', '+ getTotalStock(sku): int', '+ printStock()', '+ printHistory(sku)', '- checkLowStock(w, p, before, after)', '- record(type, sku, from, to, qty)']},
+    {name: 'Warehouse', x: 500, y: 480, w: 420, c: 'blue', f: ['- id: String', '- city: String', '- stock: Map<String, Integer>'], m: ['+ getQuantity(sku): int', '+ addStock(sku, qty): int', '+ removeStock(sku, qty): int   // -1 = short']},
+    {name: 'StockTransaction', st: '«value»', x: 500, y: 720, w: 420, c: 'sky', f: ['- id: int', '- type: TransactionType', '- sku: String', '- from: String', '- to: String', '- quantity: int'], m: []},
+    {name: 'Product', x: 40, y: 480, w: 380, c: 'green', f: ['- sku: String', '- name: String', '- category: Category', '- price: double', '- reorderLevel: int'], m: []},
+    {name: 'Category', st: '«enum»', x: 40, y: 700, w: 380, c: 'gray', f: ['ELECTRONICS, GROCERY, CLOTHING'], m: []},
+    {name: 'TransactionType', st: '«enum»', x: 40, y: 830, w: 380, c: 'gray', f: ['STOCK_IN, STOCK_OUT, TRANSFER'], m: []},
+    {name: 'StockObserver', st: '«interface»', abs: true, x: 1000, y: 70, w: 540, c: 'purple', f: [], m: ['+ onLowStock(warehouse, product, quantity)']},
+    {name: 'LowStockAlert', x: 1000, y: 230, w: 220, c: 'purple', f: [], m: ['+ onLowStock(...)']},
+    {name: 'AutoReplenisher', x: 1250, y: 230, w: 290, c: 'purple', f: ['- inventory: InventoryService', '- strategy: Replenishment…'], m: ['+ onLowStock(w, p, qty)', '+ setStrategy(strategy)']},
+    {name: 'ReplenishmentStrategy', st: '«interface»', abs: true, x: 1000, y: 480, w: 540, c: 'orange', f: [], m: ['+ reorderQuantity(product, current): int']},
+    {name: 'FixedQuantityStrategy', x: 1000, y: 640, w: 260, c: 'orange', f: ['- quantity: int'], m: ['+ reorderQuantity(...)']},
+    {name: 'TopUpStrategy', x: 1280, y: 640, w: 260, c: 'orange', f: ['- factor: int'], m: ['+ reorderQuantity(...)']}
+  ];
+  boxes.forEach(b => classBox(L.nodes, svg.id, b));
+  /* Service 70..405, Warehouse 480..648, Transaction 720..886, Product 480..615, Category 700..781,
+     TxType 830..911, Observer 70..151, Alert 230..297, Replenisher 230..364, Strategy 480..561, Fixed/TopUp 640..740 */
+  const E = [
+    {kind: 'agg',  p: [[710, 405], [710, 480]], label: [710, 442, 'has many']},
+    {kind: 'agg',  p: [[500, 385], [230, 385], [230, 480]], label: [365, 385, 'has many']},
+    {kind: 'comp', p: [[500, 330], [460, 330], [460, 800], [500, 800]], label: [460, 690, 'has many']},
+    {kind: 'agg',  p: [[920, 110], [1000, 110]], label: [960, 110, 'has many']},
+    {kind: 'inh',  p: [[1110, 230], [1110, 151]], label: [1110, 190, 'is a']},
+    {kind: 'inh',  p: [[1395, 230], [1395, 151]], label: [1395, 190, 'is a']},
+    {kind: 'agg',  p: [[1395, 364], [1395, 480]], label: [1395, 422, 'has a']},
+    {kind: 'assoc', p: [[1250, 330], [920, 330]], label: [1110, 330, 'uses (addStock)']},
+    {kind: 'inh',  p: [[1130, 640], [1130, 561]], label: [1130, 600, 'is a']},
+    {kind: 'inh',  p: [[1410, 640], [1410, 561]], label: [1410, 600, 'is a']},
+    {kind: 'dep',  p: [[230, 615], [230, 700]], label: [230, 657, 'uses']},
+    {kind: 'dep',  p: [[500, 860], [420, 860]], label: [460, 860, 'uses']}
+  ];
+  E.forEach(e => edge(L, e));
+
+  // legend
+  const lg = el('g', {transform: 'translate(1000,790)', filter: `url(#${svg.id}-sh)`}, L.nodes);
+  el('rect', {width: 300, height: 246, rx: 12, fill: '#ffffff', stroke: '#dfe3ea'}, lg);
+  txt(lg, 16, 28, 'Legend', {'font-family': FONT, 'font-size': 14, 'font-weight': 800, fill: '#1f2328'});
+  const LL = {edges: lg, deco: lg, labels: lg};
+  const items = [['comp', 'Composition (owns, same lifetime)'], ['agg', 'Aggregation (has, lives outside)'], ['assoc', 'Association (knows about)'], ['dep', 'Dependency (uses / creates)'], ['inh', 'Inheritance (is-a)']];
+  items.forEach(([k, s], i) => {
+    const y = 60 + i * 36;
+    edge(LL, {kind: k, p: [[18, y], [72, y]]});
+    txt(lg, 86, y + 4, s, {'font-family': FONT, 'font-size': 12.5, fill: '#2f3540'});
+  });
+  txt(lg, 16, 234, '- private   + public   # protected', {'font-family': MONO, 'font-size': 11.5, fill: '#5b6471'});
+
+  // sticky notes
+  sticky(L, svg.id, 40, 80, 380, 150, '#FFF3A3', '🔔 Fire once: the crossing', ['before > reorderLevel', 'and after <= reorderLevel', 'not on every sale below it'], -1, 15);
+  sticky(L, svg.id, 1320, 800, 220, 150, '#D3F5E1', '🔒 No oversell', ['Warehouse.removeStock', 'is synchronized:', 'check + take = 1 step'], 1, 14);
+})();
+
+/* ---------- flowchart ---------- */
+(function(){
+  const svg = document.getElementById('flowSvg');
+  const L = setupCanvas(svg);
+  txt(L.labels, 30, 34, 'InventoryService.removeStock()  — ship an order', {'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+  function node(n){
+    const [body, head] = PALETTE[n.c];
+    const g = el('g', {filter: `url(#${svg.id}-sh)`}, L.nodes);
+    const x = n.x - n.w / 2, y = n.y - n.h / 2;
+    if (n.shape === 'dec') el('polygon', {points: `${n.x},${y} ${x + n.w},${n.y} ${n.x},${y + n.h} ${x},${n.y}`, fill: body, stroke: head, 'stroke-width': 2}, g);
+    else el('rect', {x, y, width: n.w, height: n.h, rx: n.shape === 'term' ? n.h / 2 : 10, fill: body, stroke: head, 'stroke-width': 2}, g);
+    const lines = n.t.split('\n');
+    lines.forEach((s, i) => txt(g, n.x, n.y + 5 + (i - (lines.length - 1) / 2) * 18, s, {'text-anchor': 'middle', 'font-family': n.mono ? MONO : FONT, 'font-size': n.mono ? 13 : 14, 'font-weight': n.mono ? 500 : 700, fill: '#1f2328'}));
+  }
+  const N = [
+    {x: 480, y: 70,  w: 300, h: 46, shape: 'term', c: 'purple', t: 'removeStock(wh, sku, n)', mono: true},
+    {x: 480, y: 180, w: 300, h: 100, shape: 'dec', c: 'yellow', t: 'wh, sku known\nand n > 0 ?', mono: true},
+    {x: 800, y: 180, w: 220, h: 58, c: 'red', t: 'print error\nreturn false'},
+    {x: 480, y: 300, w: 340, h: 58, c: 'blue', t: 'left =\nwarehouse.removeStock(sku, n)', mono: true},
+    {x: 480, y: 410, w: 280, h: 96, shape: 'dec', c: 'yellow', t: 'left < 0 ?', mono: true},
+    {x: 800, y: 410, w: 220, h: 58, c: 'red', t: '"Not enough"\nreturn false'},
+    {x: 480, y: 520, w: 340, h: 46, c: 'blue', t: 'record(STOCK_OUT, ...)', mono: true},
+    {x: 480, y: 650, w: 340, h: 120, shape: 'dec', c: 'yellow', t: 'before > level\n&& after <= level ?', mono: true},
+    {x: 800, y: 650, w: 220, h: 58, c: 'green', t: 'notify observers\nonLowStock()'},
+    {x: 800, y: 770, w: 220, h: 76, c: 'orange', t: 'Alert prints\nReplenisher:\naddStock(strategy qty)'},
+    {x: 480, y: 880, w: 300, h: 46, shape: 'term', c: 'green', t: 'return true', mono: true}
+  ];
+  N.forEach(node);
+  sticky(L, svg.id, 20, 240, 250, 130, '#FFF3A3', '🔒 Atomic', ['check + take in one', 'synchronized method', 'returns -1 if short'], 0, 14);
+  sticky(L, svg.id, 20, 560, 250, 130, '#D3F5E1', '🔔 Fire once', ['9 → 4 (level 5): fire', '4 → 2: no event', 'no alert spam'], 0, 14);
+  const F = [
+    {kind: 'flow', p: [[480, 93], [480, 130]]},
+    {kind: 'flow', p: [[630, 180], [690, 180]], label: [660, 180, 'no'], labelColor: '#cf222e'},
+    {kind: 'flow', p: [[480, 230], [480, 271]], label: [506, 250, 'yes'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[480, 329], [480, 362]]},
+    {kind: 'flow', p: [[620, 410], [690, 410]], label: [655, 410, 'yes'], labelColor: '#cf222e'},
+    {kind: 'flow', p: [[480, 458], [480, 497]], label: [504, 478, 'no'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[480, 543], [480, 590]]},
+    {kind: 'flow', p: [[650, 650], [690, 650]], label: [670, 626, 'yes'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[480, 710], [480, 857]], label: [504, 780, 'no'], labelColor: '#3d4450'},
+    {kind: 'flow', p: [[800, 679], [800, 732]]},
+    {kind: 'flow', p: [[800, 808], [800, 880], [630, 880]]},
+    {kind: 'flow', p: [[330, 880], [290, 880], [290, 70], [330, 70]], label: [290, 150, 'next order'], labelColor: '#5b5bd6'}
+  ];
+  F.forEach(e => edge(L, e));
+})();
+
+/* ---------- interview flow ---------- */
+(function(){
+  const svg = document.getElementById('stepsSvg');
+  const L = setupCanvas(svg);
+  const X = 440, W = 260, H = 64;
+  const steps = [
+    {t: 'Understand the system', c: 'gray', y: 40, href: '#overview'},
+    {t: 'Requirement gathering', c: 'yellow', y: 170, href: '#requirements'},
+    {t: 'Core entities + breakdown', c: 'red', y: 320, href: '#entities'},
+    {t: 'Class diagram with flow', c: 'purple', y: 470, href: '#classes'},
+    {t: 'Working code', c: 'gray', y: 610, href: '#code'}
+  ];
+  steps.forEach((st, i) => {
+    const [body, head] = PALETTE[st.c];
+    const a = el('a', {href: st.href}, L.nodes);
+    const g = el('g', {filter: `url(#${svg.id}-sh)`, style: 'cursor:pointer'}, a);
+    el('rect', {x: X, y: st.y, width: W, height: H, rx: 10, fill: body, stroke: head, 'stroke-width': 2.5}, g);
+    txt(g, X + W / 2, st.y + H / 2 + 6, st.t, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 17, 'font-weight': 800, fill: '#1f2328'});
+    if (i) edge(L, {kind: 'flow', p: [[X + W / 2, steps[i - 1].y + H], [X + W / 2, st.y]], color: '#1f2328'});
+  });
+
+  // the 3 requirement buckets
+  const ry = 170 + H / 2;
+  sticky(L, svg.id, 790, 20, 380, 110, '#FFF3A3', '① Extensibility (new features)', ['Reorder rule → ReplenishmentStrategy', 'Email, PO on low stock → Observer', 'Reservations, batches → Warehouse'], 0);
+  sticky(L, svg.id, 790, 150, 380, 110, '#D3F5E1', '② Dynamic (user input)', ['Catalog, warehouses at runtime', 'Stock in / out / transfer calls', 'Validate SKU, warehouse, qty'], 0);
+  sticky(L, svg.id, 790, 280, 380, 110, '#FFE3E3', '③ High traffic (concurrency)', ['Many orders hit one SKU at once', 'Atomic check + take (synchronized)', 'DB: UPDATE … WHERE qty >= n'], 0);
+  [75, 205, 335].forEach(y => edge(L, {kind: 'dep', p: [[X + W, ry], [745, ry], [745, y], [790, y]]}));
+
+  // side notes per step
+  sticky(L, svg.id, 40, 22, 340, 100, '#E3EEFF', 'Picture a warehouse', ['Stock in → ship → low → reorder', 'Where does the quantity live?'], 0);
+  edge(L, {kind: 'dep', p: [[X, 72], [380, 72]]});
+  sticky(L, svg.id, 40, 290, 340, 120, '#EFE7FF', 'Nouns → classes', ['InventoryService, Warehouse', 'Product, StockTransaction', 'StockObserver, ReplenishmentStrategy'], 0);
+  edge(L, {kind: 'dep', p: [[X, 352], [380, 352]]});
+  sticky(L, svg.id, 790, 455, 380, 92, '#EFF1F4', 'Relationships + flow', ['has many → Service has Warehouses', 'is a → TopUp is a ReplenishmentStrategy'], 0);
+  edge(L, {kind: 'dep', p: [[X + W, 502], [790, 502]]});
+  sticky(L, svg.id, 790, 595, 380, 92, '#EFF1F4', 'Build bottom-up', ['Product, Warehouse, StockTransaction', '→ Strategy, Observers → Service → Main'], 0);
+  edge(L, {kind: 'dep', p: [[X + W, 642], [790, 642]]});
+
+  // which round covers which steps
+  txt(L.labels, 40, 560, 'LLD round', {'font-family': FONT, 'font-size': 14, 'font-weight': 800, fill: '#5b5bd6'});
+  txt(L.labels, 40, 582, 'Requirements → Entities → Class diagram', {'font-family': FONT, 'font-size': 13, fill: '#2f3540'});
+  txt(L.labels, 40, 620, 'Machine coding round', {'font-family': FONT, 'font-size': 14, 'font-weight': 800, fill: '#e8590c'});
+  txt(L.labels, 40, 642, 'Entities → Working code', {'font-family': FONT, 'font-size': 13, fill: '#2f3540'});
+})();
+
+/* ---------- revision diagram ---------- */
+(function(){
+  const svg = document.getElementById('revSvg');
+  const L = setupCanvas(svg);
+  const FLOW = '#5b5bd6', STRUCT = '#9aa3b2';
+  function box(x, y, w, h, c, name, sub){
+    const [body, head] = PALETTE[c];
+    const g = el('g', {filter: `url(#${svg.id}-sh)`}, L.nodes);
+    el('rect', {x, y, width: w, height: h, rx: 12, fill: body, stroke: head, 'stroke-width': 2.5}, g);
+    txt(g, x + w / 2, y + (sub ? 32 : h / 2 + 7), name, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+    if (sub) txt(g, x + w / 2, y + 56, sub, {'text-anchor': 'middle', 'font-family': MONO, 'font-size': 14, fill: '#3d4450'});
+  }
+  box(20, 40, 200, 72, 'gray', 'Client', 'order · supplier');
+  box(380, 40, 240, 72, 'yellow', 'Service', 'validate · log');
+  box(790, 40, 190, 72, 'blue', 'Warehouse', 'Map sku → qty');
+  box(20, 220, 200, 72, 'sky', 'History', 'StockTransaction');
+  box(380, 220, 240, 72, 'purple', 'Observers', 'alert · replenish');
+  box(790, 220, 190, 72, 'orange', 'Strategy', 'how many?');
+
+  // structure: has-a (grey)
+  [
+    {kind: 'agg', p: [[600, 40], [600, 18], [885, 18], [885, 40]]},
+    {kind: 'agg', p: [[580, 292], [580, 330], [885, 330], [885, 292]]}
+  ].forEach(e => edge(L, Object.assign({color: STRUCT}, e)));
+
+  // flow: numbered calls for one sale that hits the reorder level (purple)
+  [
+    {p: [[220, 76], [380, 76]], label: [300, 76, '1 · removeStock()'], size: 14},
+    {p: [[620, 76], [790, 76]], label: [705, 76, '2 · removeStock()'], size: 14},
+    {p: [[400, 112], [400, 160], [120, 160], [120, 220]], label: [260, 160, '3 · record()'], size: 14},
+    {p: [[470, 112], [470, 220]], label: [470, 178, '4 · onLowStock()'], size: 14},
+    {p: [[620, 256], [790, 256]], label: [705, 256, '5 · reorderQuantity()'], size: 13},
+    {p: [[590, 220], [590, 112]], label: [590, 146, '6 · addStock()'], size: 14}
+  ].forEach(e => edge(L, {kind: 'flow', p: e.p, color: FLOW, label: e.label, labelColor: FLOW, labelSize: e.size || 16}));
+
+  // notes
+  sticky(L, svg.id, 730, 380, 250, 116, '#FFF3A3', '💡 Key idea', ['Service moves stock.', 'Observers react.', 'Strategy: how much.'], 1, 15);
+  sticky(L, svg.id, 40, 340, 280, 116, '#D3F5E1', '🔒 No oversell', ['check + take = one', 'synchronized step', 'inside Warehouse'], -1, 15);
+
+  // legend
+  const lg = el('g', {transform: 'translate(40,510)'}, L.labels);
+  el('line', {x1: 0, y1: 10, x2: 44, y2: 10, stroke: STRUCT, 'stroke-width': 2.5}, lg);
+  txt(lg, 54, 16, 'structure: has-a', {'font-family': FONT, 'font-size': 17, fill: '#3d4450'});
+  el('line', {x1: 0, y1: 42, x2: 44, y2: 42, stroke: FLOW, 'stroke-width': 2.5}, lg);
+  txt(lg, 54, 48, '1 → 6  calls for one sale that hits the reorder level', {'font-family': FONT, 'font-size': 17, 'font-weight': 700, fill: FLOW});
+})();
+
+/* ---------- PNG export + fullscreen ---------- */
+document.querySelectorAll('[data-png]').forEach(b => b.addEventListener('click', () => {
+  const svg = document.getElementById(b.dataset.png);
+  const vb = svg.viewBox.baseVal, k = 2;
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('width', vb.width); clone.setAttribute('height', vb.height);
+  const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = vb.width * k; c.height = vb.height * k;
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fbfbfc'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    c.toBlob(blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = b.dataset.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
+  };
+  img.src = src;
+}));
+document.querySelectorAll('[data-fs]').forEach(b => b.addEventListener('click', () => {
+  const f = document.getElementById(b.dataset.fs);
+  if (document.fullscreenElement) document.exitFullscreen(); else f.requestFullscreen && f.requestFullscreen();
+}));
+
+/* ---------- simulator (mirrors InventoryService + Warehouse + observers + strategies) ---------- */
+const PRODUCTS = [
+  {sku: 'LAP-1', name: 'Laptop', level: 5},
+  {sku: 'PHN-1', name: 'Phone', level: 10},
+  {sku: 'RCE-5', name: 'Rice 5kg', level: 30}
+];
+const WH = ['BLR', 'DEL'];
+const logEl = document.getElementById('log');
+let S;
+function log(html, call, cls){ const li = document.createElement('li'); if (cls) li.className = cls; li.innerHTML = html + (call ? `<span class="call">${call}</span>` : ''); logEl.prepend(li); while (logEl.children.length > 40) logEl.lastChild.remove(); }
+const prod = sku => PRODUCTS.find(p => p.sku === sku);
+const qty = (wh, sku) => S.stock[wh][sku] || 0;
+const record = () => '#' + (++S.tx);
+function valid(n){
+  if (!Number.isInteger(n) || n <= 0){ log(`Quantity must be positive, got ${n}.`, 'isPositive() → false'); return false; }
+  return true;
+}
+function take(wh, sku, n){                                  // Warehouse.removeStock(): check + take
+  const have = qty(wh, sku);
+  if (have < n) return -1;
+  S.stock[wh][sku] = have - n;
+  return have - n;
+}
+function addStock(wh, sku, n, cls){
+  if (!valid(n)) return;
+  S.stock[wh][sku] = qty(wh, sku) + n;
+  S.flash.push(wh + sku);
+  log(`+${n} ${sku} → ${wh} (now <b>${qty(wh, sku)}</b>)`, `addStock("${wh}", "${sku}", ${n}) · ${record()} STOCK_IN`, cls);
+}
+function checkLow(wh, p, before, after){                    // InventoryService.checkLowStock()
+  if (!(before > p.level && after <= p.level)) return;
+  log(`🔔 ALERT: ${p.name} is low in ${wh} (${after} left, level ${p.level})`, `checkLowStock(): ${before} &gt; ${p.level} &amp;&amp; ${after} &lt;= ${p.level} → LowStockAlert.onLowStock()`, 'alert');
+  const strat = document.getElementById('sStrat').value;
+  if (strat === 'off') return;
+  const amount = strat === 'fixed' ? 20 : p.level * 3 - after;
+  if (amount <= 0) return;
+  const how = strat === 'fixed' ? 'FixedQuantityStrategy(20)' : `TopUpStrategy(3): ${p.level}×3 − ${after}`;
+  log(`Reorder ${amount} × ${p.sku} for ${wh}`, `AutoReplenisher → ${how} = ${amount}`, 'reorder');
+  addStock(wh, p.sku, amount, 'reorder');
+}
+function removeStock(wh, sku, n){
+  if (!valid(n)) return;
+  const left = take(wh, sku, n);
+  if (left < 0){ log(`Not enough ${sku} in ${wh}: have ${qty(wh, sku)}, need ${n}.`, 'warehouse.removeStock() → -1'); return; }
+  S.flash.push(wh + sku);
+  log(`−${n} ${sku} ← ${wh} (now <b>${left}</b>)`, `removeStock("${wh}", "${sku}", ${n}) · ${record()} STOCK_OUT`);
+  checkLow(wh, prod(sku), left + n, left);
+}
+function transfer(from, to, sku, n){
+  if (!valid(n)) return;
+  const left = take(from, sku, n);
+  if (left < 0){ log(`Not enough ${sku} in ${from} to move ${n}.`, `${from}.removeStock() → -1`); return; }
+  S.stock[to][sku] = qty(to, sku) + n;
+  S.flash.push(from + sku, to + sku);
+  log(`Moved ${n} ${sku}: ${from} (now <b>${left}</b>) → ${to} (now <b>${qty(to, sku)}</b>)`, `transfer("${from}", "${to}", "${sku}", ${n}) · ${record()} TRANSFER`);
+  checkLow(from, prod(sku), left + n, left);
+}
+function render(){
+  const rows = PRODUCTS.map(p => {
+    const cells = WH.map(w => {
+      const q = qty(w, p.sku);
+      const cls = [q <= p.level ? 'low' : '', S.flash.includes(w + p.sku) ? 'flash' : ''].join(' ').trim();
+      return `<td class="${cls}">${q}</td>`;
+    }).join('');
+    const total = WH.reduce((s, w) => s + qty(w, p.sku), 0);
+    return `<tr><td><b>${p.name}</b><span class="lv">${p.sku} · reorder level ${p.level}</span></td>${cells}<td><b>${total}</b></td></tr>`;
+  }).join('');
+  document.getElementById('stkTable').innerHTML = `<thead><tr><th>Product</th>${WH.map(w => `<th>${w}</th>`).join('')}<th>Total</th></tr></thead><tbody>${rows}</tbody>`;
+  S.flash = [];
+}
+function invReset(){
+  S = {tx: 5, flash: [], stock: {BLR: {'LAP-1': 12, 'PHN-1': 25, 'RCE-5': 100}, DEL: {'LAP-1': 4, 'PHN-1': 40}}};
+  logEl.innerHTML = '';
+  log('Inventory ready: the stock after step 2 of Main.', 'new InventoryService() · addObserver(LowStockAlert) · addObserver(AutoReplenisher) · 5 × addStock()');
+  render();
+}
+const sel = id => document.getElementById(id);
+sel('sSku').innerHTML = PRODUCTS.map(p => `<option value="${p.sku}">${p.name} (${p.sku})</option>`).join('');
+const args = () => [sel('sWh').value, sel('sSku').value, parseInt(sel('sQty').value, 10)];
+sel('bIn').addEventListener('click', () => { const [w, s, n] = args(); addStock(w, s, n); render(); });
+sel('bOut').addEventListener('click', () => { const [w, s, n] = args(); removeStock(w, s, n); render(); });
+sel('bMove').addEventListener('click', () => { const [w, s, n] = args(); transfer(w, w === 'BLR' ? 'DEL' : 'BLR', s, n); render(); });
+sel('sStrat').addEventListener('change', e => log(`Strategy: <b>${e.target.selectedOptions[0].text}</b>`, e.target.value === 'off' ? 'AutoReplenisher not called' : `replenisher.setStrategy(new ${e.target.value === 'fixed' ? 'FixedQuantityStrategy(20)' : 'TopUpStrategy(3)'})`));
+sel('bReset').addEventListener('click', invReset);
+invReset();
+
+/* ---------- code explorer ---------- */
+(function(){
+  const data = JSON.parse(document.getElementById('repoFiles').textContent);
+  const byPath = {}; data.files.forEach(f => byPath[f.path] = f);
+  const MAIN = data.main || 'Main.java';
+  const tree = document.getElementById('ideTree'), tabsEl = document.getElementById('ideTabs');
+  const codeEl = document.getElementById('ideCode'), gut = document.getElementById('ideGutter');
+  const title = document.getElementById('ideTitle'), badge = document.getElementById('ideBadge');
+  document.getElementById('ideCnt').textContent = data.files.length;
+  let open = [], current = null;
+  const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  // build folder tree
+  const root = {dirs: {}, files: []};
+  data.files.forEach(f => {
+    const parts = f.path.split('/'); let n = root;
+    parts.slice(0, -1).forEach(d => n = n.dirs[d] = n.dirs[d] || {dirs: {}, files: []});
+    n.files.push(f.path);
+  });
+  function render(node, parent){
+    Object.keys(node.dirs).sort().forEach(d => {
+      const row = document.createElement('button'); row.type = 'button'; row.className = 'ide-row open';
+      row.innerHTML = `<span class="car">▸</span>📁 ${d}`;
+      const kids = document.createElement('div'); kids.className = 'ide-kids';
+      row.addEventListener('click', () => { kids.hidden = !kids.hidden; row.classList.toggle('open', !kids.hidden); });
+      parent.append(row, kids); render(node.dirs[d], kids);
+    });
+    node.files.sort().forEach(p => {
+      const row = document.createElement('button'); row.type = 'button'; row.className = 'ide-row'; row.dataset.path = p;
+      row.innerHTML = `<span class="car"></span>☕ ${p.split('/').pop()}` + (p === MAIN ? '<span class="mb">MAIN</span>' : '');
+      row.title = p;
+      row.addEventListener('click', () => show(p));
+      parent.appendChild(row);
+    });
+  }
+  render(root, tree);
+
+  function show(p){
+    if (!open.includes(p)) open.push(p);
+    current = p;
+    const f = byPath[p], code = f.code.replace(/\n$/, '');
+    codeEl.innerHTML = window.Prism ? Prism.highlight(code, Prism.languages.java, 'java') : esc(code);
+    gut.textContent = code.split('\n').map((_, i) => i + 1).join('\n');
+    document.getElementById('ideScroll').scrollTop = 0;
+    title.textContent = p.split('/').pop(); badge.hidden = p !== MAIN;
+    tree.querySelectorAll('.ide-row[data-path]').forEach(r => r.classList.toggle('on', r.dataset.path === p));
+    tabsEl.innerHTML = '';
+    open.forEach(q => {
+      const t = document.createElement('button'); t.type = 'button'; t.className = 'ide-tab' + (q === p ? ' on' : '');
+      t.innerHTML = `☕ ${q.split('/').pop()} <span class="x" title="Close">✕</span>`;
+      t.addEventListener('click', e => {
+        if (e.target.classList.contains('x')){
+          open = open.filter(x => x !== q);
+          if (!open.length) open = [MAIN];
+          show(q === current ? open[open.length - 1] : current);
+        } else show(q);
+      });
+      tabsEl.appendChild(t);
+    });
+  }
+  show(MAIN);
+
+  document.getElementById('ideCopy').addEventListener('click', e => {
+    navigator.clipboard && navigator.clipboard.writeText(byPath[current].code).then(() => { e.target.textContent = '✓'; setTimeout(() => e.target.textContent = '⧉', 1200); });
+  });
+  document.getElementById('ideFs').addEventListener('click', () => {
+    const ide = document.getElementById('ide');
+    if (document.fullscreenElement) document.exitFullscreen(); else ide.requestFullscreen && ide.requestFullscreen();
+  });
+  const outBox = document.getElementById('ideOut'), outPre = document.getElementById('ideOutPre'), outTab = document.getElementById('ideOutTab');
+  function toggleOut(force){ outBox.hidden = force === undefined ? !outBox.hidden : !force; outTab.classList.toggle('on', !outBox.hidden); }
+  outTab.addEventListener('click', () => { if (!outPre.textContent) outPre.textContent = data.output; toggleOut(); });
+  let timer = null;
+  document.getElementById('ideRun').addEventListener('click', () => {
+    clearInterval(timer); toggleOut(true);
+    const lines = data.output.split('\n'); let i = 0; outPre.textContent = '';
+    timer = setInterval(() => {
+      outPre.textContent += lines.slice(i, i + 12).join('\n') + '\n'; i += 12;
+      outPre.scrollTop = outPre.scrollHeight;
+      if (i >= lines.length) clearInterval(timer);
+    }, 30);
+  });
+})();
+
+/* ---------- flip cards ---------- */
+const fcs = [...document.querySelectorAll('.fc')];
+fcs.forEach(c => c.addEventListener('click', () => c.classList.toggle('open')));
+document.getElementById('fcAll').addEventListener('click', e => {
+  const show = fcs.some(c => !c.classList.contains('open'));
+  fcs.forEach(c => c.classList.toggle('open', show));
+  e.target.textContent = show ? 'Hide all answers' : 'Show all answers';
+});
+
+})();
+</script>
+</body>
+</html>

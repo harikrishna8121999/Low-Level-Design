@@ -1,0 +1,1638 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elevator System LLD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff; --bg-soft:#f7f8fa; --bg-card:#ffffff; --text:#1f2328; --muted:#5b6471; --border:#e4e7ec;
+  --accent:#5b5bd6; --accent-soft:#eef0ff; --accent-text:#4343b8;
+  --code-bg:#f6f8fa; --code-text:#24292f;
+  --ok:#1a7f37; --ok-soft:#e8f6ec; --bad:#cf222e; --bad-soft:#fdecee;
+  --warn:#9a6700; --warn-soft:#fff6dd; --info-soft:#eaf3ff; --info:#0b5cad;
+  --tok-kw:#cf222e; --tok-str:#0a3069; --tok-fn:#8250df; --tok-com:#6e7781; --tok-num:#0550ae; --tok-cls:#953800; --tok-ann:#116329;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --bg-soft:#151920; --bg-card:#171b22; --text:#e6e8eb; --muted:#9aa4b2; --border:#2a3039;
+    --accent:#8e8ff7; --accent-soft:#20223f; --accent-text:#b4b5ff;
+    --code-bg:#12161c; --code-text:#d6dbe1;
+    --ok:#4ac26b; --ok-soft:#12261a; --bad:#ff7b72; --bad-soft:#2d1517;
+    --warn:#e3b341; --warn-soft:#2a2210; --info-soft:#0f2136; --info:#79b8ff;
+    --tok-kw:#ff7b72; --tok-str:#a5d6ff; --tok-fn:#d2a8ff; --tok-com:#8b949e; --tok-num:#79c0ff; --tok-cls:#ffa657; --tok-ann:#7ee787;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --bg-soft:#151920; --bg-card:#171b22; --text:#e6e8eb; --muted:#9aa4b2; --border:#2a3039;
+  --accent:#8e8ff7; --accent-soft:#20223f; --accent-text:#b4b5ff;
+  --code-bg:#12161c; --code-text:#d6dbe1;
+  --ok:#4ac26b; --ok-soft:#12261a; --bad:#ff7b72; --bad-soft:#2d1517;
+  --warn:#e3b341; --warn-soft:#2a2210; --info-soft:#0f2136; --info:#79b8ff;
+  --tok-kw:#ff7b72; --tok-str:#a5d6ff; --tok-fn:#d2a8ff; --tok-com:#8b949e; --tok-num:#79c0ff; --tok-cls:#ffa657; --tok-ann:#7ee787;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.7 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--accent-text)}
+code,pre,.mono{font-family:"JetBrains Mono",Consolas,ui-monospace,monospace;font-variant-ligatures:none}
+:not(pre)>code{background:var(--code-bg);border:1px solid var(--border);padding:.08em .38em;border-radius:5px;font-size:.86em}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;height:56px;display:flex;align-items:center;gap:12px;padding:0 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.topbar .brand{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.topbar .crumb{color:var(--muted);font-size:14px}
+.topbar .sp{flex:1}
+.btn{font:inherit;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--bg-card);color:var(--text);padding:6px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--accent);color:var(--accent-text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.08);color:#fff}
+.progress{position:fixed;top:56px;left:0;height:2px;background:var(--accent);width:0;z-index:21}
+
+/* layout */
+.layout{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1440px;margin:0 auto}
+aside.toc{position:sticky;top:56px;height:calc(100vh - 56px);overflow:auto;padding:28px 12px 28px 20px;border-right:1px solid var(--border)}
+.toc h4{margin:0 0 10px 10px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.toc a{display:block;padding:6px 10px;border-radius:7px;font-size:14px;color:var(--muted);text-decoration:none;line-height:1.35}
+.toc a:hover{color:var(--text);background:var(--bg-soft)}
+.toc a.active{color:var(--accent-text);background:var(--accent-soft);font-weight:600}
+.toc .num{display:inline-block;width:22px;color:inherit;opacity:.7;font-variant-numeric:tabular-nums}
+main{padding:40px 48px 120px;min-width:0}
+main section{margin-bottom:64px}
+.prose{max-width:800px}
+h1{font-size:40px;line-height:1.15;letter-spacing:-.02em;margin:0 0 14px;font-weight:800}
+h2{font-size:28px;letter-spacing:-.01em;margin:0 0 16px;padding-top:8px;font-weight:750;line-height:1.25}
+h3{font-size:20px;margin:32px 0 10px;font-weight:700}
+h4{font-size:16px;margin:22px 0 6px}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 14px;padding-left:22px}
+li{margin:4px 0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 22px}
+.pill{font-size:12.5px;font-weight:600;border-radius:999px;padding:3px 10px;border:1px solid var(--border);background:var(--bg-soft);color:var(--muted)}
+.pill.easy{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.lead{font-size:18px;color:var(--muted)}
+.secnum{color:var(--accent);margin-right:8px}
+
+/* callouts */
+.callout{border:1px solid var(--border);border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:10px;padding:14px 16px;margin:18px 0}
+.callout.tip{border-left-color:var(--ok);background:var(--ok-soft)}
+.callout.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.callout.info{border-left-color:var(--info);background:var(--info-soft)}
+.callout b.t{display:block;margin-bottom:4px}
+.callout p:last-child,.callout ul:last-child{margin-bottom:0}
+
+/* chat Q&A */
+.chat{display:flex;flex-direction:column;gap:10px;margin:18px 0 22px}
+.msg{display:flex;gap:10px;align-items:flex-start;max-width:760px}
+.msg .av{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff}
+.msg.c .av{background:#5b5bd6}.msg.i .av{background:#e8590c}
+.msg .bub{border:1px solid var(--border);background:var(--bg-card);border-radius:12px;padding:9px 14px;box-shadow:var(--shadow)}
+.msg.i .bub{background:var(--bg-soft)}
+.msg .who{font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:1px}
+
+/* cards & grids */
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:16px 0}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0}
+.card{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--bg-card);box-shadow:var(--shadow)}
+.card h4{margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.card p{margin:0;color:var(--muted);font-size:14.5px}
+.card .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+.tag.used{background:var(--ok-soft);color:var(--ok)}
+.tag.could{background:var(--info-soft);color:var(--info)}
+.tag.avoid{background:var(--bad-soft);color:var(--bad)}
+
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin:14px 0 20px}
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;margin:14px 0 20px}
+.tablewrap table{margin:0}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--bg-soft);font-size:13px;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+
+/* nouns highlight */
+.noun{background:#fff1a8;color:#3d3200;border-radius:4px;padding:0 3px;font-weight:600}
+:root[data-theme="dark"] .noun{background:#4a3f0c;color:#ffe680}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .noun{background:#4a3f0c;color:#ffe680}}
+
+/* diagram frame */
+.figure{margin:20px 0 28px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--bg-card);box-shadow:var(--shadow)}
+.figure .fhead{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg-soft);flex-wrap:wrap}
+.figure .fhead b{font-size:14px}
+.figure .fhead .sp{flex:1}
+.figure .canvas{background:#fbfbfc;overflow:auto}
+.figure .canvas svg{display:block;width:100%;height:auto;min-width:860px;margin:0 auto}
+#flowSvg{max-width:900px}
+.figure:fullscreen{border-radius:0;display:flex;flex-direction:column}
+.figure:fullscreen .canvas{flex:1}
+.figure:fullscreen .canvas svg{height:100%;min-width:0}
+.figure .cap{padding:10px 14px;font-size:13.5px;color:var(--muted);border-top:1px solid var(--border)}
+
+/* code */
+.code{position:relative;margin:14px 0 20px;border:1px solid var(--border);border-radius:12px;background:var(--code-bg);overflow:hidden}
+.code .chead{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--border);font-size:12.5px;color:var(--muted);font-family:"JetBrains Mono",Consolas,monospace}
+.code .copy{font-size:12px;padding:3px 9px}
+pre{font-variant-ligatures:none;margin:0;padding:14px 16px;overflow:auto;font-size:13.3px;line-height:1.6;color:var(--code-text);tab-size:4}
+pre code{background:none;border:0;padding:0;font-size:inherit}
+.token.keyword,.token.boolean{color:var(--tok-kw)}
+.token.string,.token.char{color:var(--tok-str)}
+.token.function{color:var(--tok-fn)}
+.token.comment{color:var(--tok-com);font-style:italic}
+.token.number{color:var(--tok-num)}
+.token.class-name{color:var(--tok-cls)}
+.token.annotation,.token.punctuation.annotation{color:var(--tok-ann)}
+.token.operator{color:inherit}
+.why{font-size:14.5px;color:var(--muted);border-left:3px solid var(--border);padding:2px 0 2px 12px;margin:-6px 0 22px}
+
+/* serpentine mini grid */
+.serp{display:grid;grid-template-columns:repeat(4,44px);gap:4px;margin:10px 0}
+.serp div{height:44px;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:14px;background:var(--bg-soft);border:1px solid var(--border)}
+.serp div.r{background:var(--accent-soft);color:var(--accent-text)}
+.serpwrap{display:flex;gap:28px;align-items:center;flex-wrap:wrap;margin:10px 0 18px}
+
+/* simulator */
+.sim{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:22px;margin:16px 0 22px;align-items:start}
+.board{position:relative;aspect-ratio:1;width:100%;display:grid;grid-template-columns:repeat(10,1fr);border:2px solid var(--border);border-radius:12px;overflow:hidden;user-select:none}
+.board .cell{position:relative;font-size:10px;font-weight:600;color:#56606c;padding:2px 4px;border-right:1px solid rgba(0,0,0,.04);border-bottom:1px solid rgba(0,0,0,.04)}
+.board .cell.a{background:#f4f1ff}.board .cell.b{background:#ffffff}
+.board .cell.last{background:#fff4c2}
+.board .cell.flash{outline:3px solid #f59f00;outline-offset:-3px}
+.board svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.token-p{position:absolute;width:5.2%;aspect-ratio:1;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transform:translate(-50%,-50%);transition:left .45s ease,top .45s ease;z-index:3;display:grid;place-items:center;color:#fff;font-size:9px;font-weight:800}
+.simside{display:flex;flex-direction:column;gap:12px}
+.simctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.die{font-size:44px;line-height:1;width:58px;height:58px;display:grid;place-items:center;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)}
+.die.spin{animation:spin .35s ease}
+@keyframes spin{from{transform:rotate(-180deg) scale(.6)}to{transform:none}}
+.queue{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
+.queue .q{padding:3px 10px;border-radius:999px;color:#fff;font-weight:700;font-size:12px}
+.queue .q.front{outline:2px solid var(--text);outline-offset:1px}
+.log{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--bg-soft);font-size:13px}
+.log li{padding:7px 11px;border-bottom:1px solid var(--border);margin:0}
+.log li:first-child{background:var(--bg-card)}
+.log .call{font-family:"JetBrains Mono",Consolas,monospace;font-size:11.5px;color:var(--muted);display:block}
+select{font:inherit;font-size:13px;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text)}
+
+/* exercises */
+details{border:1px solid var(--border);border-radius:10px;margin:10px 0;background:var(--bg-card)}
+details>summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:14.5px;list-style:none;display:flex;gap:8px;align-items:center}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"▸";color:var(--accent);transition:transform .15s}
+details[open]>summary::before{transform:rotate(90deg)}
+details>.body{padding:0 14px 12px}
+.ex{border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin:16px 0;background:var(--bg-card);box-shadow:var(--shadow)}
+.ex h4{margin:0 0 6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lvl{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+.lvl.e{background:var(--ok-soft);color:var(--ok)}.lvl.m{background:var(--warn-soft);color:var(--warn)}.lvl.h{background:var(--bad-soft);color:var(--bad)}
+
+/* quiz */
+.quiz{counter-reset:q}
+.qbox{border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0;background:var(--bg-card)}
+.qbox .qq{font-weight:600;margin-bottom:8px}
+.qbox .opts{display:grid;gap:6px}
+.qbox button.opt{font:inherit;font-size:14.5px;text-align:left;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-soft);color:var(--text);cursor:pointer}
+.qbox button.opt:hover:not(:disabled){border-color:var(--accent)}
+.qbox button.opt.right{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:600}
+.qbox button.opt.wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.qbox .exp{display:none;margin-top:8px;font-size:14px;color:var(--muted)}
+.qbox.done .exp{display:block}
+.score{font-weight:700;color:var(--accent-text)}
+
+/* checklist */
+.check{list-style:none;padding:0}
+.check li{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--border)}
+.check input{margin-top:6px;accent-color:var(--accent);width:16px;height:16px}
+
+/* cheat sheet */
+.tldr{font-size:18px;line-height:1.6;border-radius:14px;padding:18px 22px;background:var(--accent-soft);border:1px solid var(--border);margin:6px 0 30px}
+.tldr-k{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-text);margin-bottom:4px}
+.tl{margin:0 0 10px}
+.tl-step{display:grid;grid-template-columns:40px minmax(0,1fr);gap:16px;position:relative;padding-bottom:26px}
+.tl-step::before{content:"";position:absolute;left:19px;top:42px;bottom:2px;width:2px;background:var(--border)}
+.tl-step:last-child::before{display:none}
+.tl-dot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#1f2328;border:2px solid}
+.tl-body{min-width:0}
+.tl-body h4{margin:7px 0 8px;font-size:17px}
+.say{margin:0;font-size:15.5px}
+.bucket{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 14px;font-size:15px}
+.bucket .bk{font-weight:700;color:var(--accent-text)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:14px;font-weight:600;padding:4px 12px;border-radius:999px;background:var(--bg-soft);border:1px solid var(--border)}
+.chip.hl{background:var(--accent-soft);color:var(--accent-text)}
+pre.tree{font-variant-ligatures:none;margin:0;padding:14px 16px;border-radius:12px;background:var(--code-bg);border:1px solid var(--border);font-size:13.5px;line-height:1.6;overflow:auto}
+.tree .tc{color:var(--tok-com)}
+#revSvg{min-width:0 !important}
+table.traps td:first-child{font-weight:600;width:45%}
+.term{display:block;font-size:12.5px;color:var(--muted)}
+.warm{list-style:none;counter-reset:w;padding:0;margin:8px 0 0}
+.warm li{counter-increment:w;display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;margin:0 0 8px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)}
+.warm li::before{content:counter(w);width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--accent-soft);color:var(--accent-text)}
+.warm li a{font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
+td b{white-space:nowrap}
+.pat{display:grid;gap:8px;margin:10px 0 20px;font-size:15px}
+.pat .tag{display:inline-block;width:64px;text-align:center;margin-right:10px;font-size:11px;font-weight:700;padding:2px 0;border-radius:999px;text-transform:uppercase}
+.fc-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.fc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fc{font:inherit;text-align:left;cursor:pointer;min-height:112px;padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;transition:border-color .15s}
+.fc:hover{border-color:var(--accent)}
+.fc .q{font-weight:600;font-size:15px}
+.fc .q::after{content:"tap to reveal";display:block;margin-top:6px;font-weight:500;font-size:12px;color:var(--muted)}
+.fc .a{display:none;font-size:14.5px;color:var(--text);border-top:1px dashed var(--border);padding-top:8px}
+.fc.open{border-color:var(--ok);background:var(--ok-soft)}
+.fc.open .q::after{display:none}
+.fc.open .a{display:block}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--border);padding-top:16px;margin-top:40px}
+
+/* code explorer */
+.ide{--i-bg:#1e1f22;--i-side:#191a1d;--i-bd:#2e3036;--i-tx:#d5d8dd;--i-mu:#868a91;--i-hl:#2b2d33;
+  display:grid;grid-template-columns:240px minmax(0,1fr);border:1px solid var(--i-bd);border-radius:14px;overflow:hidden;background:var(--i-bg);color:var(--i-tx);margin:18px 0 24px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.ide:fullscreen{border-radius:0;height:100vh}
+.ide-side{background:var(--i-side);border-right:1px solid var(--i-bd);padding:14px 10px;min-width:0}
+.ide-lang{border:1px solid var(--i-bd);border-radius:9px;padding:8px 12px;font-weight:700;font-size:14px;margin-bottom:14px}
+.ide-files{font-weight:700;font-size:14px;padding:4px 6px 10px;border-bottom:1px solid var(--i-bd);margin-bottom:8px}
+.ide-cnt{font-size:11px;background:var(--i-hl);border-radius:999px;padding:1px 8px;margin-left:4px;color:var(--i-mu)}
+.ide-tree{font-size:13.5px}
+.ide-row{display:flex;align-items:center;gap:6px;width:100%;font:inherit;font-size:13.5px;color:var(--i-tx);background:none;border:0;border-radius:7px;padding:5px 8px;cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ide-row:hover{background:var(--i-hl)}
+.ide-row.on{background:#1f3a2c;color:#5fd38d}
+.ide-row .car{display:inline-block;width:10px;color:var(--i-mu);transition:transform .15s}
+.ide-row.open .car{transform:rotate(90deg)}
+.ide-row .mb{margin-left:auto;font-size:10px;font-weight:800;color:#5fd38d;background:#1f3a2c;border:1px solid #2f5a42;border-radius:5px;padding:0 5px}
+.ide-kids{padding-left:14px}
+.ide-kids[hidden]{display:none}
+.ide-main{display:flex;flex-direction:column;min-width:0}
+.ide-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--i-bd)}
+.ide-head b{font-size:15px}
+.ide-fico{color:#5fd38d;font-family:"JetBrains Mono",Consolas,monospace;font-size:12px;font-weight:700}
+.ide-badge{font-size:10px;font-weight:800;color:#5fd38d;background:#1f3a2c;border:1px solid #2f5a42;border-radius:5px;padding:1px 6px}
+.ide-head .sp,.ide-foot .sp{flex:1}
+.ide-ib{background:none;border:1px solid transparent;color:var(--i-mu);font-size:16px;width:32px;height:30px;border-radius:7px;cursor:pointer}
+.ide-ib:hover{border-color:var(--i-bd);color:var(--i-tx)}
+.ide-tabs{display:flex;overflow-x:auto;background:var(--i-side);border-bottom:1px solid var(--i-bd);min-height:36px}
+.ide-tab{display:flex;align-items:center;gap:8px;font:inherit;font-size:13px;color:var(--i-mu);background:none;border:0;border-right:1px solid var(--i-bd);padding:8px 12px;cursor:pointer;white-space:nowrap}
+.ide-tab.on{color:var(--i-tx);background:var(--i-bg);box-shadow:inset 0 2px 0 #5fd38d}
+.ide-tab .x{opacity:.5;font-size:12px}.ide-tab .x:hover{opacity:1}
+.ide-code{display:flex;overflow:auto;height:480px;font-family:"JetBrains Mono",Consolas,monospace;font-size:13.5px;line-height:1.65;font-variant-ligatures:none}
+.ide:fullscreen .ide-code{height:auto;flex:1}
+.ide-gutter{position:sticky;left:0;flex:none;text-align:right;padding:12px 14px 12px 12px;color:#5c6068;background:var(--i-bg);border-right:1px solid var(--i-bd);user-select:none;white-space:pre}
+.ide-code pre{margin:0;padding:12px 18px;overflow:visible;color:var(--i-tx);font-size:inherit;line-height:inherit;flex:1}
+.ide .token.keyword,.ide .token.boolean{color:#cf8e6d}
+.ide .token.string{color:#6aab73}
+.ide .token.function{color:#56a8f5}
+.ide .token.comment{color:#7a7e85}
+.ide .token.number{color:#2aacb8}
+.ide .token.class-name{color:#d5d8dd}
+.ide .token.annotation,.ide .token.punctuation.annotation{color:#b3ae60}
+.ide .token.punctuation,.ide .token.operator{color:#bcbec4}
+.ide-foot{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--i-bd)}
+.ide-otab{font:inherit;font-size:13px;background:none;border:0;color:var(--i-mu);cursor:pointer;padding:4px 8px;border-radius:6px}
+.ide-otab.on{color:var(--i-tx);background:var(--i-hl)}
+.ide-run{font:inherit;font-size:14px;font-weight:700;background:#22a85a;color:#fff;border:0;border-radius:9px;padding:8px 18px;cursor:pointer}
+.ide-run:hover{background:#27bd66}
+.ide-out{border-top:1px solid var(--i-bd);background:#141517}
+.ide-out[hidden]{display:none}
+.ide-outnote{font-size:12px;color:var(--i-mu);padding:8px 14px;border-bottom:1px solid var(--i-bd)}
+.ide-outnote code{background:var(--i-hl);border-color:var(--i-bd);color:var(--i-tx)}
+.ide-out pre{margin:0;max-height:360px;overflow:auto;padding:12px 16px;font-size:12.5px;line-height:1.5;color:#c9ccd1;white-space:pre}
+@media (max-width:760px){
+  .ide{grid-template-columns:1fr}
+  .ide-side{border-right:0;border-bottom:1px solid var(--i-bd)}
+  .ide-tree{max-height:200px;overflow:auto}
+  .ide-code{height:380px}
+}
+.pill.med{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+#stateSvg{max-width:1100px}
+/* elevator simulator */
+.elsim{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:22px;margin:16px 0 22px;align-items:start}
+.bld{border:2px solid var(--border);border-radius:16px;padding:12px;background:var(--bg-soft);display:flex;flex-direction:column;gap:10px}
+.bld-grid{display:grid;grid-template-columns:34px 70px minmax(0,1fr) minmax(0,1fr);gap:3px 8px;align-items:center}
+.bld-h{font-size:12px;font-weight:700;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bld-fl{font-family:"JetBrains Mono",Consolas,monospace;font-weight:700;color:var(--muted);text-align:center;font-size:13px}
+.bld-hall{display:flex;gap:4px}
+.hb{font:inherit;font-size:11px;width:30px;height:26px;border-radius:7px;border:1px solid var(--border);background:var(--bg-card);color:var(--muted);cursor:pointer;padding:0}
+.hb:hover{border-color:var(--accent)}
+.hb.lit{background:#ffd43b;color:#1f2328;border-color:#f59f00}
+.hb.none{visibility:hidden}
+.shaft{height:30px;border-radius:6px;background:var(--bg-card);border:1px dashed var(--border);position:relative}
+.shaft.stop::after{content:"";position:absolute;right:6px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:#7DAEF8}
+.cab{position:absolute;inset:2px 18px 2px 4px;border-radius:5px;background:#5b5bd6;color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;font-family:"JetBrains Mono",Consolas,monospace}
+.cab.open{background:#2b8a3e}
+.cab.off{background:#868e96}
+.panel{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:13px}
+.panel b{width:28px}
+.cb{font:inherit;font-size:12px;font-weight:600;width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--bg-card);color:var(--text);cursor:pointer;padding:0}
+.cb:hover{border-color:var(--accent)}
+.cb.lit{background:#ffd43b;color:#1f2328;border-color:#f59f00}
+.bld-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tickc{font-family:"JetBrains Mono",Consolas,monospace;font-size:13px;color:var(--muted);margin-left:auto}
+.mobile-toc{display:none}
+@media (max-width:1000px){
+  .layout{grid-template-columns:1fr}
+  aside.toc{display:none}
+  main{padding:24px 16px 80px}
+  .mobile-toc{display:block;margin-bottom:20px}
+  .sim,.elsim{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  h1{font-size:30px} h2{font-size:23px}
+  .grid2,.grid3,.fc-grid,.bucket{grid-template-columns:1fr}
+  .warm li{grid-template-columns:34px minmax(0,1fr)}
+  .warm li a{grid-column:2}
+  .topbar .crumb{display:none}
+  .cb{width:26px;height:26px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">🛗 LLD Notes</div>
+  <div class="crumb">/ Medium / Elevator System</div>
+  <div class="sp"></div>
+  <button class="btn" id="themeBtn" type="button" aria-label="Toggle theme">◐ Theme</button>
+</div>
+<div class="progress" id="progress"></div>
+
+<div class="layout">
+<aside class="toc" id="toc">
+  <h4>On this page</h4>
+  <a href="#overview"><span class="num">0</span>The problem &amp; flow</a>
+  <a href="#warmup"><span class="num">▶</span>Try it first</a>
+  <a href="#requirements"><span class="num">1</span>Requirement gathering</a>
+  <a href="#entities"><span class="num">2</span>Core entities + breakdown</a>
+  <a href="#classes"><span class="num">3</span>Class diagram</a>
+  <a href="#flow"><span class="num">4</span>Movement &amp; step flow</a>
+  <a href="#code"><span class="num">5</span>Working code</a>
+  <a href="#try"><span class="num">6</span>Run and Test</a>
+  <a href="#patterns"><span class="num">7</span>Design patterns</a>
+  <a href="#similar"><span class="num">8</span>Similar problems</a>
+  <a href="#recap"><span class="num">9</span>Revision cheat sheet</a>
+</aside>
+
+<main>
+<details class="mobile-toc"><summary>Contents</summary><div class="body" id="mtoc"></div></details>
+
+<!-- ============ 0. OVERVIEW ============ -->
+<section id="overview">
+<div class="prose">
+  <h1>Design an Elevator System</h1>
+  <div class="meta">
+    <span class="pill med">Medium</span>
+    <span class="pill">Java</span>
+    <span class="pill">~25 min read</span>
+    <span class="pill">Code: <code>org.nailyourinterview.lld.elevator</code></span>
+  </div>
+  <p class="lead">A building has floors and a few elevators. People press ▲ or ▼ on a floor, and riders press a floor button inside a car. The system picks a car for each call and moves every car in a sensible order.</p>
+  <p>The question tests two decisions. <b>Which car</b> answers a hall call? That is a swappable <b>Strategy</b>. <b>In which order</b> does a car serve its stops? That is the <b>LOOK</b> rule: keep the direction while stops lie ahead, then turn. A sorted set of floors makes LOOK a few lines.</p>
+  <p>Every LLD answer follows the same 5 steps. Requirement gathering splits into 3 buckets: <b>extensibility</b>, <b>dynamic input</b> and <b>high traffic</b>. Click a step to jump to it.</p>
+</div>
+<div class="figure" id="figSteps">
+  <div class="fhead"><b>LLD interview flow — applied to Elevator System</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figSteps">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="stepsSvg" data-name="lld-interview-flow.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="stepsSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-label="LLD interview flow"></svg></div>
+</div>
+</section>
+
+<!-- ============ WARM-UP ============ -->
+<section id="warmup">
+<div class="prose">
+  <h2><span class="secnum">▶</span>Try it first</h2>
+  <p>Before you read the solution, spend 10–15 minutes on your own. Use paper. A wrong first attempt is fine — it makes the answer stick when you read it.</p>
+  <h3>Step 0 · Ride the elevators</h3>
+  <p>Press ▲ or ▼ on a floor, or a number in a car panel. Then press <b>Step</b> (one tick = one floor) or <b>Auto</b>. Blue dots are pending stops. Try this: press 7 in E1 and step twice, then press ▲ on floor 4. Which car comes? Then send E1 to floor 2 and 9 at the same time. The grey line under each log entry shows the method that does the work.</p>
+</div>
+
+<div class="elsim">
+  <div class="bld">
+    <div class="bld-row">
+      <button class="btn primary" type="button" id="elStep">Step ▸</button>
+      <button class="btn" type="button" id="elAuto">▶ Auto</button>
+      <button class="btn" type="button" id="elMaint">🔧 E2 off</button>
+      <button class="btn" type="button" id="elReset">↺ Reset</button>
+      <span class="tickc" id="elTick">t00</span>
+    </div>
+    <div class="bld-grid" id="elGrid"></div>
+    <div class="panel" id="elPanels"></div>
+  </div>
+  <div class="simside">
+    <ul class="log" id="log"></ul>
+  </div>
+</div>
+
+<div class="prose">
+  <h3>Now design it yourself</h3>
+  <ol class="warm">
+    <li><span><b>Questions.</b> Write 5 questions you would ask the interviewer.</span><a href="#requirements">compare → 1.1</a></li>
+    <li><span><b>Buckets.</b> Sort the answers into core, extensibility, dynamic input and high traffic.</span><a href="#requirements">compare → 1</a></li>
+    <li><span><b>Entities.</b> List the classes and one job for each.</span><a href="#entities">compare → 2</a></li>
+    <li><span><b>LOOK by hand.</b> A car is at 7. Riders press 2, then 9, then 5. Write the order of stops.</span><a href="#flow">compare → 4</a></li>
+    <li><span><b>Dispatch.</b> Write <code>cost(elevator, hallCall)</code> in pseudocode. Cover idle, on the way, and going away.</span><a href="#code">compare → 5.3</a></li>
+  </ol>
+</div>
+</section>
+
+<!-- ============ 1. REQUIREMENTS ============ -->
+<section id="requirements">
+<div class="prose">
+  <h2><span class="secnum">1</span>Requirement gathering</h2>
+  <p>Do not start with code. Ask questions first. Each answer removes a guess. Then sort the answers into 4 buckets: <b>core</b>, <b>extensibility</b>, <b>dynamic input</b> and <b>high traffic</b>.</p>
+
+  <h3>1.1 Ask questions</h3>
+  <div class="chat">
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>How many floors and how many elevators?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Configurable. Use 10 floors (0–9) and 2 elevators for the demo.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Which buttons exist?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Each floor has ▲ and ▼ (a <b>hall call</b>). Each car has a panel of floor buttons (a <b>car call</b>).</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Who decides which car answers a hall call?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>A central controller. Start with “nearest suitable car”. We may change the rule later.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>In which order does one car serve its stops?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>No zig-zag. Keep going one way while there are stops ahead, then turn.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Weight limit, door timers, fire mode?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Not now. Doors just open at a stop. Keep the design open for them.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Maintenance?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>An operator can take a car out of service. It must get no new calls.</div></div>
+    <div class="msg c"><div class="av">C</div><div class="bub"><span class="who">Candidate</span>Real time or simulated?</div></div>
+    <div class="msg i"><div class="av">I</div><div class="bub"><span class="who">Interviewer</span>Simulate it. One tick moves each car one floor.</div></div>
+  </div>
+
+  <h3>1.2 Core functional requirements</h3>
+  <ul>
+    <li>A building with floors <code>0 … N-1</code> and <code>M</code> elevators. All start at floor 0.</li>
+    <li>Hall call (floor + direction): the controller picks one car with a scheduling strategy.</li>
+    <li>Car call: a rider picks a floor inside a car.</li>
+    <li>Each tick, every car moves one floor. It serves stops in LOOK order and opens its doors at each stop.</li>
+    <li>Status of each car: floor, direction, pending stops, doors.</li>
+    <li>Maintenance: take a car out only when it has no stops. The strategy skips it; car calls are rejected.</li>
+    <li>Reject bad input: unknown floor, ▲ on the top floor, ▼ on floor 0, unknown car.</li>
+  </ul>
+
+  <h3 id="extensibility">1.3 Extensibility (new features)</h3>
+  <p>Ask: <i>“Which features may come next?”</i> You do not build them now. You make sure each one is an <b>addition</b>, not a rewrite. For each feature, name the class that changes and the pattern that keeps the change small.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Follow-up question</th><th>What changes</th><th>Pattern / idea</th></tr></thead>
+    <tbody>
+      <tr><td>Another dispatch rule (least busy, zones, odd/even floors)</td><td>New class that implements <code>SchedulingStrategy</code></td><td>Strategy</td></tr>
+      <tr><td>Morning up-peak, evening down-peak</td><td><code>controller.setStrategy(...)</code> at runtime</td><td>Strategy</td></tr>
+      <tr><td>Riders only board in their direction</td><td>Split <code>stops</code> into <code>upStops</code> / <code>downStops</code> in <code>Elevator</code></td><td>—</td></tr>
+      <tr><td>Weight / capacity limit</td><td><code>Elevator.load</code>; <code>cost()</code> skips full cars</td><td>—</td></tr>
+      <tr><td>Floor displays, mobile app, logs</td><td><code>Elevator</code> fires “moved” / “doors open” events</td><td>Observer</td></tr>
+      <tr><td>Door timer, emergency stop, fire mode</td><td><code>ElevatorState</code> classes: Idle, Moving, DoorsOpen, Emergency</td><td>State</td></tr>
+      <tr><td>Calls in a queue, undo / replay</td><td>Each call becomes an object the controller runs later</td><td>Command</td></tr>
+      <tr><td>Express or service cars</td><td>A car type; the strategy filters by type</td><td>Factory</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>1.4 Dynamic (user input)</h3>
+  <p>Nothing is hard-coded in the classes. It comes in at runtime:</p>
+  <ul>
+    <li>Building size and the rule: <code>new ElevatorController(10, 2, new NearestElevatorStrategy())</code>.</li>
+    <li>Hall calls: <code>requestElevator(4, Direction.UP)</code> — at any time, also while cars move.</li>
+    <li>Car calls: <code>selectFloor("E1", 7)</code>.</li>
+    <li>Operator: <code>setMaintenance("E2", true)</code>.</li>
+  </ul>
+  <div class="callout warn"><b class="t">Validate the input</b>The controller rejects a floor outside <code>0 … top</code>, ▲ on the top floor, ▼ on floor 0, <code>Direction.IDLE</code> as a button, an unknown car id and a car call to a car that is out of service. The same floor pressed twice is stored once, because <code>stops</code> is a set.</div>
+
+  <h3>1.5 High traffic (concurrency)</h3>
+  <p><b>Needed in a real building, not in this code.</b> Many people press buttons at once, and a timer moves the cars. The code here is a single-thread simulation: every call and every <code>step()</code> runs one after another. Say this out loud.</p>
+  <p>For a real system, pick one of two designs:</p>
+  <ul>
+    <li><b>One controller thread.</b> Buttons put requests on a <code>BlockingQueue</code>. One thread takes them, picks a car and calls <code>addStop</code>. A scheduler calls <code>step()</code>. No locks in the model.</li>
+    <li><b>Locks.</b> <code>select()</code> + <code>addStop()</code> must be one atomic action, or two calls read the same old state and both pick the same car. Use a lock in the controller and make <code>Elevator.addStop</code> / <code>step</code> <code>synchronized</code> (or keep stops in a <code>ConcurrentSkipListSet</code>).</li>
+  </ul>
+
+  <h3>1.6 Non-functional requirements</h3>
+  <ul>
+    <li><b>No starvation</b> — LOOK serves every stop within one sweep up and one sweep down.</li>
+    <li><b>Short waits</b> — the strategy sends the car that arrives first.</li>
+    <li><b>Safe</b> — a car out of service never moves or gets calls.</li>
+    <li><b>Extensible</b> — a new dispatch rule is one new class.</li>
+  </ul>
+  <div class="callout tip"><b class="t">Interview tip</b>Separate the two questions early: “which car” lives in the <b>controller + strategy</b>; “which order” lives in the <b>elevator</b>. Most weak answers mix them in one big method.</div>
+</div>
+</section>
+
+<!-- ============ 2. ENTITIES ============ -->
+<section id="entities">
+<div class="prose">
+  <h2><span class="secnum">2</span>Core entities + breakdown</h2>
+  <p>Read the requirements again. Underline the nouns. Most nouns become classes. Verbs become methods.</p>
+  <div class="callout">
+    A <span class="noun">building</span> has <span class="noun">floors</span> and <span class="noun">elevators</span>. A person on a floor <i>presses</i> a <span class="noun">hall call</span> (▲ or ▼). The <span class="noun">controller</span> <i>picks</i> a car with a <span class="noun">scheduling rule</span>. A rider inside <i>presses</i> a <span class="noun">floor button</span>. Each elevator keeps its <span class="noun">stops</span>, its <span class="noun">direction</span> and its <span class="noun">doors</span>, and <i>moves</i> one floor per <span class="noun">tick</span>.
+  </div>
+  <p>“Building” and “controller” are the same object here: the controller owns the floor range and the cars. “Floor” needs no class — it is an <code>int</code>. “Floor button” is a call to <code>selectFloor</code>. “Scheduling rule” is an interface, because it will change.</p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Entity</th><th>Type</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td><b>ElevatorController</b></td><td>Service</td><td>Holds the cars, the top floor and the strategy. Validates input. Hall call → strategy → <code>addStop</code>. Car call → <code>addStop</code>. Drives time with <code>step()</code>.</td></tr>
+      <tr><td><b>Elevator</b></td><td>Model</td><td>Floor, direction, doors, in-service flag and a sorted set of stops. <code>step()</code> moves one floor in LOOK order.</td></tr>
+      <tr><td><b>Request</b></td><td>Value object</td><td>A hall call: floor + direction. The input to the strategy.</td></tr>
+      <tr><td><b>SchedulingStrategy</b></td><td>Interface</td><td><code>select(elevators, request)</code> → a car, or <code>null</code>.</td></tr>
+      <tr><td><b>NearestElevatorStrategy</b></td><td>Strategy</td><td>Lowest travel cost. Idle or on the way: the distance. Going away: to its last stop, then back.</td></tr>
+      <tr><td><b>Direction</b></td><td>Enum</td><td>UP, DOWN, IDLE.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn"><b class="t">Common mistake</b>A FIFO queue of floors per car. Riders press 5, 1, 9, 2 and the car zig-zags 5 → 1 → 9 → 2. Keep the stops in a <b>sorted set</b> plus a <b>direction</b>: the car goes 5 → 9, then 2 → 1 (or the reverse), never back and forth.</div>
+</div>
+</section>
+
+<!-- ============ 3. CLASSES ============ -->
+<section id="classes">
+<div class="prose">
+  <h2><span class="secnum">3</span>Class diagram</h2>
+  <p>Read it from the top: <b>ElevatorController</b> has many <b>Elevators</b> and has a <b>SchedulingStrategy</b>. For a hall call it creates a <b>Request</b> and asks the strategy for a car.</p>
+</div>
+
+<div class="figure" id="figClass">
+  <div class="fhead"><b>Class diagram</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figClass">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="classSvg" data-name="elevator-class-diagram.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="classSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1420 920" role="img" aria-label="Class diagram of Elevator System"></svg></div>
+  <div class="cap">Read each line as a sentence: “ElevatorController <b>has many</b> Elevators”, “NearestElevatorStrategy <b>is a</b> SchedulingStrategy”, “ElevatorController <b>creates</b> Request”.</div>
+</div>
+
+<div class="prose">
+  <h3>Relationships, one by one</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>From → To</th><th>Relationship</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>ElevatorController → Elevator</td><td><b>has many</b> <span class="term">composition</span></td><td>The controller creates the cars in its constructor. They live and die with it.</td></tr>
+      <tr><td>ElevatorController → SchedulingStrategy</td><td><b>has a</b> <span class="term">aggregation</span></td><td>Passed in from outside; can be swapped with <code>setStrategy</code>.</td></tr>
+      <tr><td>NearestElevatorStrategy → SchedulingStrategy</td><td><b>is a</b> <span class="term">realization</span></td><td>Implements <code>select</code>.</td></tr>
+      <tr><td>ElevatorController → Request</td><td><b>creates</b> <span class="term">dependency</span></td><td>One short-lived object per hall call.</td></tr>
+      <tr><td>NearestElevatorStrategy → Request</td><td><b>uses</b> <span class="term">dependency</span></td><td>Reads floor and direction.</td></tr>
+      <tr><td>NearestElevatorStrategy → Elevator</td><td><b>uses</b> <span class="term">dependency</span></td><td>Reads floor, direction, last stop. Never changes a car.</td></tr>
+      <tr><td>Elevator → Direction</td><td><b>uses</b> <span class="term">dependency</span></td><td>Current direction. <code>Request</code> uses it too.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout info"><b class="t">Who changes a car?</b>Only the controller calls <code>addStop</code>, and only the car changes its own floor in <code>step()</code>. The strategy is read-only. That keeps “which car” and “which order” apart.</div>
+</div>
+</section>
+
+<!-- ============ 4. FLOW ============ -->
+<section id="flow">
+<div class="prose">
+  <h2><span class="secnum">4</span>Movement and the step flow</h2>
+  <p>First the <b>state diagram</b> of one car: how its direction changes. Then the <b>flowchart</b> of the core method, <code>Elevator.step()</code>, which runs once per tick.</p>
+</div>
+<div class="figure" id="figState">
+  <div class="fhead"><b>Direction of one car</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figState">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="stateSvg" data-name="elevator-states.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="stateSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 600" role="img" aria-label="State diagram of one elevator"></svg></div>
+  <div class="cap">The code keeps this as a <code>Direction</code> field plus an <code>inService</code> flag, not as State classes. With door timers or fire mode, move to the State pattern (see §7).</div>
+</div>
+<div class="figure" id="figFlow">
+  <div class="fhead"><b>Elevator.step() flowchart</b><span class="sp"></span>
+    <button class="btn" type="button" data-fs="figFlow">⤢ Full screen</button>
+    <button class="btn primary" type="button" data-png="flowSvg" data-name="elevator-step-flow.png">⬇ Download PNG</button>
+  </div>
+  <div class="canvas"><svg id="flowSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960" role="img" aria-label="Flowchart of Elevator.step"></svg></div>
+  <div class="cap">One tick. <code>nextStop()</code> is the whole LOOK rule. A car at 7 with stops {2, 5, 9} going DOWN serves 5, 2, then turns for 9.</div>
+</div>
+</section>
+
+<!-- ============ 5. CODE ============ -->
+<section id="code">
+<div class="prose">
+  <h2><span class="secnum">5</span>Working code</h2>
+  <p>Build bottom-up: <code>Direction</code> and <code>Request</code>, then <code>Elevator</code>, then the strategy, then <code>ElevatorController</code>. The code uses Lombok (<code>@Getter</code>, <code>@Setter</code>, <code>@AllArgsConstructor</code>) to remove boilerplate.</p>
+
+  <h3>5.1 Direction and Request</h3>
+<div class="code"><div class="chead"><span>enums/Direction.java · model/Request.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public enum Direction {
+    UP, DOWN, IDLE
+}
+
+// A hall call: a person on a floor presses UP or DOWN
+@Getter
+@AllArgsConstructor
+public class Request {
+    private final int floor;
+    private final Direction direction;
+}</code></pre></div>
+  <p class="why">A car call needs no class: it is just a floor for one known car. A hall call needs a direction, because the strategy prefers a car that already goes that way.</p>
+
+  <h3>5.2 Elevator — LOOK on a sorted set</h3>
+<div class="code"><div class="chead"><span>model/Elevator.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@Getter
+public class Elevator {
+    private final String id;
+    private int currentFloor;
+    private Direction direction = Direction.IDLE;
+    private boolean doorsOpen;
+    @Setter private boolean inService = true;
+    private final TreeSet&lt;Integer&gt; stops = new TreeSet&lt;&gt;();
+
+    public Elevator(String id, int startFloor) {
+        this.id = id;
+        this.currentFloor = startFloor;
+    }
+
+    public void addStop(int floor) {
+        stops.add(floor);                                   // a set: pressing 7 twice = one stop
+        if (direction == Direction.IDLE &amp;&amp; floor != currentFloor) {
+            direction = floor &gt; currentFloor ? Direction.UP : Direction.DOWN;
+        }
+    }
+
+    public boolean hasStops() { return !stops.isEmpty(); }
+
+    // The farthest stop in the current direction: where this trip ends
+    public int lastStop() {
+        if (stops.isEmpty()) return currentFloor;
+        return direction == Direction.DOWN ? stops.first() : stops.last();
+    }
+
+    // One tick = move one floor. LOOK: keep going while there are stops ahead, then turn.
+    public void step() {
+        doorsOpen = false;
+        Integer target = nextStop();
+        if (target == null) { direction = Direction.IDLE; return; }
+        if (target == currentFloor) { stopHere(); return; }
+        direction = target &gt; currentFloor ? Direction.UP : Direction.DOWN;
+        currentFloor += direction == Direction.UP ? 1 : -1;
+        if (stops.contains(currentFloor)) stopHere();
+    }
+
+    private Integer nextStop() {
+        Integer above = stops.ceiling(currentFloor);       // smallest stop &gt;= floor
+        Integer below = stops.floor(currentFloor);         // largest stop &lt;= floor
+        if (direction == Direction.UP &amp;&amp; above != null) return above;
+        if (direction == Direction.DOWN &amp;&amp; below != null) return below;
+        // Idle, or nothing left ahead: go to the nearest stop
+        if (above == null) return below;
+        if (below == null) return above;
+        return above - currentFloor &lt;= currentFloor - below ? above : below;
+    }
+
+    private void stopHere() {
+        stops.remove(currentFloor);
+        doorsOpen = true;
+        if (stops.isEmpty()) direction = Direction.IDLE;
+    }
+
+    public String status() {
+        String state = inService ? direction.name() : "OFF";
+        return String.format("%s @%d %-4s %-10s %s", id, currentFloor, state, stops, doorsOpen ? "OPEN" : "    ");
+    }
+}</code></pre></div>
+  <p class="why"><b>Why a <code>TreeSet</code>?</b> It keeps the floors sorted and unique. <code>ceiling(f)</code> gives the next stop above in O(log n); <code>floor(f)</code> the next one below. That is all LOOK needs: “next stop ahead, else turn”. <b>Why direction is changed only in <code>step()</code> and <code>addStop()</code>:</b> a new stop behind the car never flips it mid-trip, so riders already inside are not starved.</p>
+
+  <h3>5.3 SchedulingStrategy — which car?</h3>
+<div class="code"><div class="chead"><span>strategy/SchedulingStrategy.java · strategy/NearestElevatorStrategy.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">public interface SchedulingStrategy {
+    // Returns null when no elevator can take the request
+    Elevator select(List&lt;Elevator&gt; elevators, Request request);
+}
+
+public class NearestElevatorStrategy implements SchedulingStrategy {
+
+    @Override
+    public Elevator select(List&lt;Elevator&gt; elevators, Request request) {
+        return elevators.stream()
+                .filter(Elevator::isInService)
+                .min(Comparator.comparingInt(e -&gt; cost(e, request)))
+                .orElse(null);
+    }
+
+    // Floors the elevator must travel before it reaches the caller
+    private int cost(Elevator e, Request r) {
+        int here = e.getCurrentFloor();
+        int target = r.getFloor();
+        if (e.getDirection() == Direction.IDLE) return Math.abs(here - target);
+
+        boolean onTheWay = e.getDirection() == r.getDirection()
+                &amp;&amp; (r.getDirection() == Direction.UP ? here &lt;= target : here &gt;= target);
+        if (onTheWay) return Math.abs(here - target);
+
+        // It must finish its trip first, then come back
+        int end = e.lastStop();
+        return Math.abs(here - end) + Math.abs(end - target);
+    }
+}</code></pre></div>
+  <p class="why"><b>Three cases.</b> Idle: plain distance. Moving the same way and the caller is ahead: plain distance, it stops on the way. Otherwise: go to the end of the trip, then come back. Example: E1 goes UP from 0 to 4; a ▼ call on floor 2 costs E1 4 + 2 = 6, an idle E2 at 0 costs 2 → E2 wins. On a tie, <code>min</code> keeps the first car.</p>
+
+  <h3>5.4 ElevatorController — the entry point</h3>
+<div class="code"><div class="chead"><span>service/ElevatorController.java</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">@Getter
+public class ElevatorController {
+    private static final int MAX_TICKS = 100;
+
+    private final int topFloor;
+    private final List&lt;Elevator&gt; elevators = new ArrayList&lt;&gt;();
+    @Setter private SchedulingStrategy strategy;
+    private int tick;
+
+    // Floors are 0 .. floors - 1. All elevators start at floor 0.
+    public ElevatorController(int floors, int elevatorCount, SchedulingStrategy strategy) {
+        this.topFloor = floors - 1;
+        this.strategy = strategy;
+        for (int i = 1; i &lt;= elevatorCount; i++) elevators.add(new Elevator("E" + i, 0));
+    }
+
+    // hall call: a person on a floor presses UP or DOWN
+    public void requestElevator(int floor, Direction direction) {
+        if (!isValidFloor(floor)) return;
+        if (direction == Direction.IDLE
+                || (floor == topFloor &amp;&amp; direction == Direction.UP)
+                || (floor == 0 &amp;&amp; direction == Direction.DOWN)) {
+            System.out.println("No " + direction + " button on floor " + floor + ".");
+            return;
+        }
+        Elevator elevator = strategy.select(elevators, new Request(floor, direction));
+        if (elevator == null) { System.out.println("No elevator available. Try again later."); return; }
+        elevator.addStop(floor);
+        System.out.println("Hall call " + floor + " " + direction + " -&gt; " + elevator.getId());
+    }
+
+    // car call: a rider inside presses a floor button
+    public void selectFloor(String elevatorId, int floor) {
+        Elevator elevator = find(elevatorId);
+        if (elevator == null || !isValidFloor(floor)) return;
+        if (!elevator.isInService()) { System.out.println(elevatorId + " is out of service."); return; }
+        elevator.addStop(floor);
+        System.out.println("Inside " + elevatorId + ": floor " + floor);
+    }
+
+    // operator
+    public void setMaintenance(String elevatorId, boolean on) {
+        Elevator elevator = find(elevatorId);
+        if (elevator == null) return;
+        if (on &amp;&amp; elevator.hasStops()) {
+            System.out.println(elevatorId + " has stops left. Finish them first.");
+            return;
+        }
+        elevator.setInService(!on);
+        System.out.println(elevatorId + (on ? " out of service." : " back in service."));
+    }
+
+    // time: every elevator moves one floor per tick
+    public void step() {
+        tick++;
+        elevators.forEach(Elevator::step);
+        String line = elevators.stream().map(Elevator::status).collect(Collectors.joining(" | "));
+        System.out.println(String.format("t%02d  %s", tick, line).stripTrailing());
+    }
+
+    public void runUntilIdle() {
+        for (int i = 0; i &lt; MAX_TICKS &amp;&amp; elevators.stream().anyMatch(Elevator::hasStops); i++) step();
+    }
+
+    // find(id) prints "No elevator X." when missing; isValidFloor prints the range
+}</code></pre></div>
+  <p class="why">The controller is thin: validate, ask the strategy, call <code>addStop</code>. It never decides the order of stops. <code>MAX_TICKS</code> is a guard: a bug in <code>step()</code> cannot loop forever.</p>
+
+  <h3>5.5 Main — the client</h3>
+<div class="code"><div class="chead"><span>Main.java (part)</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">ElevatorController building = new ElevatorController(10, 2, new NearestElevatorStrategy());
+
+building.requestElevator(4, Direction.UP);     // -&gt; E1 (tie, first car)
+building.requestElevator(2, Direction.DOWN);   // -&gt; E2 (E1 is going away)
+building.runUntilIdle();
+
+building.selectFloor("E1", 2);                 // E1 at 7: now going DOWN
+building.selectFloor("E1", 9);                 // behind it: waits
+building.selectFloor("E1", 5);                 // ahead: served first
+building.runUntilIdle();                       // 5, 2, then turn for 9</code></pre></div>
+</div>
+</section>
+
+<!-- ============ 6. RUN AND TEST ============ -->
+<section id="try">
+<div class="prose">
+  <h2><span class="secnum">6</span>Run and Test</h2>
+  <p>The full <code>elevator</code> package, file by file. Click a file to open it. Start with <b>Main.java</b>, then follow the calls: <code>ElevatorController</code> → <code>NearestElevatorStrategy</code> → <code>Elevator.addStop</code> → <code>Elevator.step</code>.
+  <a href="https://github.com/harikrishna8121999/Low-Level-Design/tree/main/src/main/java/org/nailyourinterview/lld/elevator" target="_blank" rel="noopener">Open on GitHub ↗</a> <span style="color:var(--muted)">(after you push it)</span></p>
+</div>
+
+<div class="ide" id="ide">
+  <aside class="ide-side">
+    <div class="ide-lang">☕ Java</div>
+    <div class="ide-files">📁 Files <span class="ide-cnt" id="ideCnt"></span></div>
+    <div class="ide-tree" id="ideTree"></div>
+  </aside>
+  <div class="ide-main">
+    <div class="ide-head">
+      <span class="ide-fico">{ }</span><b id="ideTitle"></b><span class="ide-badge" id="ideBadge">MAIN</span>
+      <span class="sp"></span>
+      <button class="ide-ib" type="button" id="ideCopy" title="Copy file">⧉</button>
+      <button class="ide-ib" type="button" id="ideFs" title="Full screen">⤢</button>
+    </div>
+    <div class="ide-tabs" id="ideTabs"></div>
+    <div class="ide-code" id="ideScroll"><div class="ide-gutter" id="ideGutter"></div><pre><code class="language-java" id="ideCode"></code></pre></div>
+    <div class="ide-foot">
+      <button class="ide-otab" type="button" id="ideOutTab">Output</button>
+      <span class="sp"></span>
+      <button class="ide-run" type="button" id="ideRun">▶ Run</button>
+    </div>
+    <div class="ide-out" id="ideOut" hidden>
+      <div class="ide-outnote">Recorded run of <code>Main</code> on JDK 21 (a browser cannot run Java). Each <code>tNN</code> line is one tick: car, floor, direction, pending stops, <code>OPEN</code> when the doors open. Seven scenarios: dispatch, car calls, pick-up on the way, LOOK turn, maintenance, bad input, no car in service.</div>
+      <pre id="ideOutPre"></pre>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="repoFiles">{"files": [{"path": "enums/Direction.java", "code": "package org.nailyourinterview.lld.elevator.enums;\n\npublic enum Direction {\n    UP,\n    DOWN,\n    IDLE\n}\n"}, {"path": "model/Elevator.java", "code": "package org.nailyourinterview.lld.elevator.model;\n\nimport lombok.Getter;\nimport lombok.Setter;\nimport org.nailyourinterview.lld.elevator.enums.Direction;\n\nimport java.util.TreeSet;\n\n@Getter\npublic class Elevator {\n    private final String id;\n    private int currentFloor;\n    private Direction direction = Direction.IDLE;\n    private boolean doorsOpen;\n    @Setter private boolean inService = true;\n    private final TreeSet<Integer> stops = new TreeSet<>();\n\n    public Elevator(String id, int startFloor) {\n        this.id = id;\n        this.currentFloor = startFloor;\n    }\n\n    public void addStop(int floor) {\n        stops.add(floor);\n        if (direction == Direction.IDLE && floor != currentFloor) {\n            direction = floor > currentFloor ? Direction.UP : Direction.DOWN;\n        }\n    }\n\n    public boolean hasStops() {\n        return !stops.isEmpty();\n    }\n\n    // The farthest stop in the current direction: where this trip ends\n    public int lastStop() {\n        if (stops.isEmpty()) return currentFloor;\n        return direction == Direction.DOWN ? stops.first() : stops.last();\n    }\n\n    // One tick = move one floor. LOOK: keep going while there are stops ahead, then turn.\n    public void step() {\n        doorsOpen = false;\n        Integer target = nextStop();\n        if (target == null) {\n            direction = Direction.IDLE;\n            return;\n        }\n        if (target == currentFloor) {\n            stopHere();\n            return;\n        }\n        direction = target > currentFloor ? Direction.UP : Direction.DOWN;\n        currentFloor += direction == Direction.UP ? 1 : -1;\n        if (stops.contains(currentFloor)) stopHere();\n    }\n\n    private Integer nextStop() {\n        Integer above = stops.ceiling(currentFloor);\n        Integer below = stops.floor(currentFloor);\n        if (direction == Direction.UP && above != null) return above;\n        if (direction == Direction.DOWN && below != null) return below;\n        // Idle, or nothing left ahead: go to the nearest stop\n        if (above == null) return below;\n        if (below == null) return above;\n        return above - currentFloor <= currentFloor - below ? above : below;\n    }\n\n    private void stopHere() {\n        stops.remove(currentFloor);\n        doorsOpen = true;\n        if (stops.isEmpty()) direction = Direction.IDLE;\n    }\n\n    public String status() {\n        String state = inService ? direction.name() : \"OFF\";\n        return String.format(\"%s @%d %-4s %-10s %s\", id, currentFloor, state, stops, doorsOpen ? \"OPEN\" : \"    \");\n    }\n}\n"}, {"path": "model/Request.java", "code": "package org.nailyourinterview.lld.elevator.model;\n\nimport lombok.AllArgsConstructor;\nimport lombok.Getter;\nimport org.nailyourinterview.lld.elevator.enums.Direction;\n\n// A hall call: a person on a floor presses UP or DOWN\n@Getter\n@AllArgsConstructor\npublic class Request {\n    private final int floor;\n    private final Direction direction;\n}\n"}, {"path": "service/ElevatorController.java", "code": "package org.nailyourinterview.lld.elevator.service;\n\nimport lombok.Getter;\nimport lombok.Setter;\nimport org.nailyourinterview.lld.elevator.enums.Direction;\nimport org.nailyourinterview.lld.elevator.model.Elevator;\nimport org.nailyourinterview.lld.elevator.model.Request;\nimport org.nailyourinterview.lld.elevator.strategy.SchedulingStrategy;\n\nimport java.util.ArrayList;\nimport java.util.List;\nimport java.util.stream.Collectors;\n\n@Getter\npublic class ElevatorController {\n    private static final int MAX_TICKS = 100;\n\n    private final int topFloor;\n    private final List<Elevator> elevators = new ArrayList<>();\n    @Setter private SchedulingStrategy strategy;\n    private int tick;\n\n    // Floors are 0 .. floors - 1. All elevators start at floor 0.\n    public ElevatorController(int floors, int elevatorCount, SchedulingStrategy strategy) {\n        this.topFloor = floors - 1;\n        this.strategy = strategy;\n        for (int i = 1; i <= elevatorCount; i++) {\n            elevators.add(new Elevator(\"E\" + i, 0));\n        }\n    }\n\n    // ----- hall call: a person on a floor presses UP or DOWN -----\n\n    public void requestElevator(int floor, Direction direction) {\n        if (!isValidFloor(floor)) return;\n        if (direction == Direction.IDLE\n                || (floor == topFloor && direction == Direction.UP)\n                || (floor == 0 && direction == Direction.DOWN)) {\n            System.out.println(\"No \" + direction + \" button on floor \" + floor + \".\");\n            return;\n        }\n\n        Elevator elevator = strategy.select(elevators, new Request(floor, direction));\n        if (elevator == null) {\n            System.out.println(\"No elevator available. Try again later.\");\n            return;\n        }\n        elevator.addStop(floor);\n        System.out.println(\"Hall call \" + floor + \" \" + direction + \" -> \" + elevator.getId());\n    }\n\n    // ----- car call: a rider inside presses a floor button -----\n\n    public void selectFloor(String elevatorId, int floor) {\n        Elevator elevator = find(elevatorId);\n        if (elevator == null || !isValidFloor(floor)) return;\n        if (!elevator.isInService()) {\n            System.out.println(elevatorId + \" is out of service.\");\n            return;\n        }\n        elevator.addStop(floor);\n        System.out.println(\"Inside \" + elevatorId + \": floor \" + floor);\n    }\n\n    // ----- operator -----\n\n    public void setMaintenance(String elevatorId, boolean on) {\n        Elevator elevator = find(elevatorId);\n        if (elevator == null) return;\n        if (on && elevator.hasStops()) {\n            System.out.println(elevatorId + \" has stops left. Finish them first.\");\n            return;\n        }\n        elevator.setInService(!on);\n        System.out.println(elevatorId + (on ? \" out of service.\" : \" back in service.\"));\n    }\n\n    // ----- time: every elevator moves one floor per tick -----\n\n    public void step() {\n        tick++;\n        elevators.forEach(Elevator::step);\n        String line = elevators.stream().map(Elevator::status).collect(Collectors.joining(\" | \"));\n        System.out.println(String.format(\"t%02d  %s\", tick, line).stripTrailing());\n    }\n\n    public void runUntilIdle() {\n        for (int i = 0; i < MAX_TICKS && elevators.stream().anyMatch(Elevator::hasStops); i++) {\n            step();\n        }\n    }\n\n    private Elevator find(String elevatorId) {\n        for (Elevator e : elevators) {\n            if (e.getId().equals(elevatorId)) return e;\n        }\n        System.out.println(\"No elevator \" + elevatorId + \".\");\n        return null;\n    }\n\n    private boolean isValidFloor(int floor) {\n        if (floor < 0 || floor > topFloor) {\n            System.out.println(\"Invalid floor \" + floor + \". Floors are 0-\" + topFloor + \".\");\n            return false;\n        }\n        return true;\n    }\n}\n"}, {"path": "strategy/NearestElevatorStrategy.java", "code": "package org.nailyourinterview.lld.elevator.strategy;\n\nimport org.nailyourinterview.lld.elevator.enums.Direction;\nimport org.nailyourinterview.lld.elevator.model.Elevator;\nimport org.nailyourinterview.lld.elevator.model.Request;\n\nimport java.util.Comparator;\nimport java.util.List;\n\npublic class NearestElevatorStrategy implements SchedulingStrategy {\n\n    @Override\n    public Elevator select(List<Elevator> elevators, Request request) {\n        return elevators.stream()\n                .filter(Elevator::isInService)\n                .min(Comparator.comparingInt(e -> cost(e, request)))\n                .orElse(null);\n    }\n\n    // Floors the elevator must travel before it reaches the caller\n    private int cost(Elevator e, Request r) {\n        int here = e.getCurrentFloor();\n        int target = r.getFloor();\n        if (e.getDirection() == Direction.IDLE) return Math.abs(here - target);\n\n        boolean onTheWay = e.getDirection() == r.getDirection()\n                && (r.getDirection() == Direction.UP ? here <= target : here >= target);\n        if (onTheWay) return Math.abs(here - target);\n\n        // It must finish its trip first, then come back\n        int end = e.lastStop();\n        return Math.abs(here - end) + Math.abs(end - target);\n    }\n}\n"}, {"path": "strategy/SchedulingStrategy.java", "code": "package org.nailyourinterview.lld.elevator.strategy;\n\nimport org.nailyourinterview.lld.elevator.model.Elevator;\nimport org.nailyourinterview.lld.elevator.model.Request;\n\nimport java.util.List;\n\npublic interface SchedulingStrategy {\n    // Returns null when no elevator can take the request\n    Elevator select(List<Elevator> elevators, Request request);\n}\n"}, {"path": "Main.java", "code": "package org.nailyourinterview.lld.elevator;\n\nimport org.nailyourinterview.lld.elevator.enums.Direction;\nimport org.nailyourinterview.lld.elevator.service.ElevatorController;\nimport org.nailyourinterview.lld.elevator.strategy.NearestElevatorStrategy;\n\npublic class Main {\n    public static void main(String[] args) {\n        ElevatorController building = new ElevatorController(10, 2, new NearestElevatorStrategy());\n\n        System.out.println(\"--- 1. Two hall calls: the strategy picks ---\");\n        building.requestElevator(4, Direction.UP);\n        building.requestElevator(2, Direction.DOWN);\n        building.runUntilIdle();\n\n        System.out.println(\"--- 2. Riders press floors inside ---\");\n        building.selectFloor(\"E1\", 7);\n        building.selectFloor(\"E2\", 0);\n        building.runUntilIdle();\n\n        System.out.println(\"--- 3. Pick up on the way ---\");\n        building.selectFloor(\"E2\", 9);\n        building.step();\n        building.step();\n        building.requestElevator(4, Direction.UP);\n        building.runUntilIdle();\n\n        System.out.println(\"--- 4. Stops above and below: keep direction, then turn ---\");\n        building.selectFloor(\"E1\", 2);\n        building.selectFloor(\"E1\", 9);\n        building.selectFloor(\"E1\", 5);\n        building.runUntilIdle();\n\n        System.out.println(\"--- 5. Maintenance ---\");\n        building.setMaintenance(\"E2\", true);\n        building.requestElevator(6, Direction.DOWN);\n        building.setMaintenance(\"E1\", true);\n        building.selectFloor(\"E2\", 1);\n        building.runUntilIdle();\n\n        System.out.println(\"--- 6. Invalid input ---\");\n        building.requestElevator(12, Direction.UP);\n        building.requestElevator(9, Direction.UP);\n        building.selectFloor(\"E3\", 2);\n\n        System.out.println(\"--- 7. No elevator in service ---\");\n        building.setMaintenance(\"E1\", true);\n        building.requestElevator(3, Direction.UP);\n        building.setMaintenance(\"E1\", false);\n        building.setMaintenance(\"E2\", false);\n        building.requestElevator(3, Direction.UP);\n        building.runUntilIdle();\n    }\n}\n"}], "output": "--- 1. Two hall calls: the strategy picks ---\nHall call 4 UP -> E1\nHall call 2 DOWN -> E2\nt01  E1 @1 UP   [4]             | E2 @1 UP   [2]\nt02  E1 @2 UP   [4]             | E2 @2 IDLE []         OPEN\nt03  E1 @3 UP   [4]             | E2 @2 IDLE []\nt04  E1 @4 IDLE []         OPEN | E2 @2 IDLE []\n--- 2. Riders press floors inside ---\nInside E1: floor 7\nInside E2: floor 0\nt05  E1 @5 UP   [7]             | E2 @1 DOWN [0]\nt06  E1 @6 UP   [7]             | E2 @0 IDLE []         OPEN\nt07  E1 @7 IDLE []         OPEN | E2 @0 IDLE []\n--- 3. Pick up on the way ---\nInside E2: floor 9\nt08  E1 @7 IDLE []              | E2 @1 UP   [9]\nt09  E1 @7 IDLE []              | E2 @2 UP   [9]\nHall call 4 UP -> E2\nt10  E1 @7 IDLE []              | E2 @3 UP   [4, 9]\nt11  E1 @7 IDLE []              | E2 @4 UP   [9]        OPEN\nt12  E1 @7 IDLE []              | E2 @5 UP   [9]\nt13  E1 @7 IDLE []              | E2 @6 UP   [9]\nt14  E1 @7 IDLE []              | E2 @7 UP   [9]\nt15  E1 @7 IDLE []              | E2 @8 UP   [9]\nt16  E1 @7 IDLE []              | E2 @9 IDLE []         OPEN\n--- 4. Stops above and below: keep direction, then turn ---\nInside E1: floor 2\nInside E1: floor 9\nInside E1: floor 5\nt17  E1 @6 DOWN [2, 5, 9]       | E2 @9 IDLE []\nt18  E1 @5 DOWN [2, 9]     OPEN | E2 @9 IDLE []\nt19  E1 @4 DOWN [2, 9]          | E2 @9 IDLE []\nt20  E1 @3 DOWN [2, 9]          | E2 @9 IDLE []\nt21  E1 @2 DOWN [9]        OPEN | E2 @9 IDLE []\nt22  E1 @3 UP   [9]             | E2 @9 IDLE []\nt23  E1 @4 UP   [9]             | E2 @9 IDLE []\nt24  E1 @5 UP   [9]             | E2 @9 IDLE []\nt25  E1 @6 UP   [9]             | E2 @9 IDLE []\nt26  E1 @7 UP   [9]             | E2 @9 IDLE []\nt27  E1 @8 UP   [9]             | E2 @9 IDLE []\nt28  E1 @9 IDLE []         OPEN | E2 @9 IDLE []\n--- 5. Maintenance ---\nE2 out of service.\nHall call 6 DOWN -> E1\nE1 has stops left. Finish them first.\nE2 is out of service.\nt29  E1 @8 DOWN [6]             | E2 @9 OFF  []\nt30  E1 @7 DOWN [6]             | E2 @9 OFF  []\nt31  E1 @6 IDLE []         OPEN | E2 @9 OFF  []\n--- 6. Invalid input ---\nInvalid floor 12. Floors are 0-9.\nNo UP button on floor 9.\nNo elevator E3.\n--- 7. No elevator in service ---\nE1 out of service.\nNo elevator available. Try again later.\nE1 back in service.\nE2 back in service.\nHall call 3 UP -> E1\nt32  E1 @5 DOWN [3]             | E2 @9 IDLE []\nt33  E1 @4 DOWN [3]             | E2 @9 IDLE []\nt34  E1 @3 IDLE []         OPEN | E2 @9 IDLE []\n", "main": "Main.java"}</script>
+</section>
+
+<!-- ============ 7. PATTERNS ============ -->
+<section id="patterns">
+<div class="prose">
+  <h2><span class="secnum">7</span>Design patterns</h2>
+  <p>Be honest in the interview. Say which patterns the code <i>uses</i> and which ones you <i>would add</i>.</p>
+  <div class="grid2">
+    <div class="card"><h4>Strategy <span class="tag used">used</span></h4><p><code>SchedulingStrategy</code> + <code>NearestElevatorStrategy</code>. The controller holds the interface and can swap it at runtime with <code>setStrategy</code>.</p></div>
+    <div class="card"><h4>Central controller <span class="tag used">used</span></h4><p><code>ElevatorController</code> is the one entry point. Cars do not talk to each other; the controller coordinates them (close to Mediator).</p></div>
+    <div class="card"><h4>Value object <span class="tag used">used</span></h4><p><code>Request</code> is immutable: floor + direction. Safe to pass to any strategy.</p></div>
+    <div class="card"><h4>Tick simulation <span class="tag used">used</span></h4><p><code>step()</code> moves time by one unit. The run is deterministic, so you can test it and replay it.</p></div>
+    <div class="card"><h4>State <span class="tag could">would add</span></h4><p><code>ElevatorState</code>: Idle, Moving, DoorsOpen, Maintenance, Emergency. Worth it once doors take time or fire mode exists.</p></div>
+    <div class="card"><h4>Observer <span class="tag could">would add</span></h4><p>Floor displays and the app subscribe to “moved” and “doors open” events. Removes <code>status()</code> printing from the model.</p></div>
+    <div class="card"><h4>Command <span class="tag could">would add</span></h4><p>Each button press is a command in a queue. One controller thread runs them — the simple answer to concurrency.</p></div>
+    <div class="card"><h4>Singleton controller <span class="tag avoid">avoid</span></h4><p>Tempting (“one per building”), but it blocks tests and a second building. Create it once and pass it in.</p></div>
+  </div>
+  <div class="callout"><b class="t">SOLID check</b>
+    <ul>
+      <li><b>S</b> — Controller: validate and route. Strategy: pick a car. Elevator: order and move.</li>
+      <li><b>O</b> — A new dispatch rule is a new class. Direction-aware stops would edit <code>Elevator</code> — the known weak spot.</li>
+      <li><b>L</b> — Any <code>SchedulingStrategy</code> works in the controller, as long as it returns an in-service car or <code>null</code>.</li>
+      <li><b>I</b> — The strategy interface has one method.</li>
+      <li><b>D</b> — The controller depends on the <code>SchedulingStrategy</code> interface, injected in the constructor.</li>
+    </ul>
+  </div>
+  <h3>Example: a second strategy, swapped at runtime</h3>
+<div class="code"><div class="chead"><span>strategy/LeastBusyStrategy.java (would add)</span><button class="btn copy" type="button">Copy</button></div><pre><code class="language-java">// Spread the load: the car with the fewest stops; ties go to the nearest
+public class LeastBusyStrategy implements SchedulingStrategy {
+    @Override
+    public Elevator select(List&lt;Elevator&gt; elevators, Request request) {
+        return elevators.stream()
+                .filter(Elevator::isInService)
+                .min(Comparator.comparingInt((Elevator e) -&gt; e.getStops().size())
+                        .thenComparingInt(e -&gt; Math.abs(e.getCurrentFloor() - request.getFloor())))
+                .orElse(null);
+    }
+}
+
+// 9 am up-peak: change the rule, not the controller
+building.setStrategy(new LeastBusyStrategy());</code></pre></div>
+  <p class="why">No line in <code>ElevatorController</code> or <code>Elevator</code> changes. That is the Open/Closed principle at work.</p>
+</div>
+</section>
+
+<!-- ============ 8. SIMILAR ============ -->
+<section id="similar">
+<div class="prose">
+  <h2><span class="secnum">8</span>Similar problems</h2>
+  <p>A problem is similar only if the <b>elevator model carries over</b>: a controller gets requests, a strategy assigns each one to a moving worker, and each worker serves its own queue in a smart order along a line. The problems below share that skeleton. They are ranked by how much of this design you can reuse.</p>
+
+  <div class="callout info"><b class="t">The shared skeleton</b>
+    <p><code>Controller</code> → <code>Strategy.select(workers, request)</code> → <code>worker.addStop(x)</code> · each tick: <code>worker.step()</code> → <b>next stop ahead, else turn</b>.</p>
+  </div>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Problem</th><th>Reuse from Elevator</th><th>New part to learn</th></tr></thead>
+    <tbody>
+      <tr><td><b>Destination-dispatch elevators</b><br><span class="pill easy" style="margin-top:4px;display:inline-block">closest</span></td><td>All of it: controller, strategy, <code>Elevator.step()</code>, LOOK.</td><td>The rider types the target floor <i>in the lobby</i>. The strategy groups riders with the same target into one car, and the car gets two stops (pick-up + drop) at once.</td></tr>
+      <tr><td><b>Disk arm scheduling</b> (SCAN / LOOK / C-LOOK)</td><td><code>TreeSet</code> of positions, <code>ceiling</code> / <code>floor</code>, the exact <code>nextStop()</code> rule.</td><td>One worker, no dispatch. Compare SCAN (go to the end), LOOK (turn at the last request) and C-LOOK (jump back, serve one way only). Measure total seek distance.</td></tr>
+      <tr><td><b>Automated parking lift / car stacker</b></td><td>A lift on a 1-D shaft, stops by level, maintenance mode, request queue.</td><td>Each request is two moves (fetch a pallet, deliver it). Slots per level, so it mixes with Parking Lot.</td></tr>
+      <tr><td><b>Warehouse shuttle / robot on a rail</b></td><td>Controller + strategy picks the nearest free robot; robot serves pick points in order along the rail.</td><td>Load and capacity per trip; battery and charging as “out of service”.</td></tr>
+      <tr><td><b>Cab / ride dispatch</b> (Uber-style matching)</td><td>Controller + <code>Strategy.select(drivers, request)</code> with a cost function; drivers can be offline.</td><td>2-D distance instead of floors; ride lifecycle (requested → accepted → on trip); no LOOK order.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip"><b class="t">Practice order</b>Disk scheduling (one worker, LOOK only) → Elevator (add dispatch) → Destination dispatch (smarter dispatch) → Parking lift (two-step requests) → Cab dispatch (2-D, lifecycle).</div>
+</div>
+</section>
+
+<!-- ============ 9. RECAP ============ -->
+<section id="recap">
+<div class="prose">
+  <h2><span class="secnum">9</span>Revision cheat sheet</h2>
+  <p style="color:var(--muted)">Read top to bottom, in the order you speak in the interview. Then close your eyes and use the flip cards.</p>
+
+  <div class="tldr">
+    <span class="tldr-k">In one breath</span>
+    <b>ElevatorController</b> owns the <b>Elevators</b> and a <b>SchedulingStrategy</b>. A hall call becomes a <b>Request</b>; the strategy picks the car with the lowest cost; the controller calls <code>addStop</code>. Each tick every car runs <code>step()</code>: next stop ahead in a <b>TreeSet</b>, else turn (LOOK); doors open at a stop; no stops → IDLE.
+  </div>
+
+  <div class="tl">
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#EFF1F4;border-color:#A9B1BD">1</div>
+      <div class="tl-body">
+        <h4>Understand the system</h4>
+        <p class="say">▲/▼ on a floor → a car comes → rider presses a floor → car moves one floor per tick, stops, turns when nothing is ahead.</p>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#FFF6C7;border-color:#FFD43B">2</div>
+      <div class="tl-body">
+        <h4>Requirement gathering</h4>
+        <div class="bucket">
+          <span class="bk">Core</span><span>N floors, M cars · hall call → pick a car · car call · LOOK order · doors at stops · maintenance · reject bad input</span>
+          <span class="bk">Extensibility</span><span>new dispatch rule · peak modes · capacity · direction-aware stops · displays · door / fire states</span>
+          <span class="bk">Dynamic</span><span>floors, cars, strategy at startup · calls at any time, also while moving</span>
+          <span class="bk">High traffic</span><span>real: yes — one controller thread + queue, or lock select + addStop</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#FFE3E3;border-color:#F27474">3</div>
+      <div class="tl-body">
+        <h4>Core entities</h4>
+        <div class="chips">
+          <span class="chip">ElevatorController</span><span class="chip hl">Elevator (TreeSet stops)</span><span class="chip">Request</span>
+          <span class="chip hl">SchedulingStrategy → NearestElevatorStrategy</span><span class="chip">Direction</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#EFE7FF;border-color:#A98BF5">4</div>
+      <div class="tl-body">
+        <h4>Class diagram + flow</h4>
+        <div class="figure" id="figRev" style="margin:4px 0 0">
+          <div class="fhead"><b>Who owns what · who calls whom</b><span class="sp"></span>
+            <button class="btn" type="button" data-fs="figRev">⤢ Full screen</button>
+            <button class="btn primary" type="button" data-png="revSvg" data-name="elevator-revision.png">⬇ PNG</button>
+          </div>
+          <div class="canvas"><svg id="revSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" role="img" aria-label="Class diagram with call flow"></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-step">
+      <div class="tl-dot" style="background:#EFF1F4;border-color:#A9B1BD">5</div>
+      <div class="tl-body">
+        <h4>Working code — the only lines to remember</h4>
+<pre class="tree"><span class="tc">// Controller: which car</span>
+Elevator e = strategy.select(elevators, new Request(floor, dir));
+e.addStop(floor);
+
+<span class="tc">// Strategy: cost = floors to travel before reaching the caller</span>
+if (idle || onTheWay) return |here - target|;
+return |here - lastStop| + |lastStop - target|;
+
+<span class="tc">// Elevator.nextStop: which order (LOOK)</span>
+Integer above = stops.ceiling(floor), below = stops.floor(floor);
+if (dir == UP &amp;&amp; above != null) return above;
+if (dir == DOWN &amp;&amp; below != null) return below;
+return nearest of above / below;          <span class="tc">// turn around</span>
+
+<span class="tc">// Elevator.step: one floor per tick</span>
+floor += dir == UP ? 1 : -1;  if (stops.contains(floor)) stopHere();</pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Traps → fixes</h3>
+  <div class="tablewrap"><table class="traps">
+    <tbody>
+      <tr><td>FIFO queue of floors → zig-zag</td><td>Sorted <code>TreeSet</code> + direction = LOOK (done)</td></tr>
+      <tr><td>Dispatch and movement in one class</td><td>Strategy picks the car; <code>Elevator</code> picks the order (done)</td></tr>
+      <tr><td>Hall direction is lost after dispatch: a car going UP stops at 6 for a person who pressed ▼, who must ride up first</td><td>Keep <code>upStops</code> / <code>downStops</code>; stop for a hall call only when moving its way</td></tr>
+      <tr><td><code>getStops()</code> returns the live <code>TreeSet</code> (Lombok <code>@Getter</code>) — a caller can change it</td><td>Return <code>Collections.unmodifiableSortedSet(stops)</code></td></tr>
+      <tr><td><code>cost()</code> uses <code>lastStop()</code> only in the current direction; stops behind the car are ignored</td><td>Add the full sweep: to the far end, back past the caller</td></tr>
+      <tr><td>Threads: two calls read the same state and pick one car</td><td>One controller thread + queue, or lock around <code>select</code> + <code>addStop</code></td></tr>
+      <tr><td>Doors open and the car leaves in the same tick</td><td>A <code>DoorsOpen</code> state that lasts N ticks (State pattern)</td></tr>
+      <tr><td>Maintenance with riders inside</td><td>Allowed only when <code>stops</code> is empty (done)</td></tr>
+      <tr><td><code>runUntilIdle()</code> loops forever on a bug</td><td><code>MAX_TICKS</code> guard (done)</td></tr>
+      <tr><td>▲ on the top floor, floor 12, unknown car</td><td>Validated in the controller (done)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Patterns in one look</h3>
+  <div class="pat">
+    <div><span class="tag used">used</span>Strategy (dispatch) · central controller · value object · tick simulation</div>
+    <div><span class="tag could">add</span>State (doors, emergency) · Observer (displays) · Command (request queue)</div>
+    <div><span class="tag avoid">avoid</span>Singleton controller · FIFO stops · dispatch logic inside <code>Elevator</code></div>
+  </div>
+
+  <h3>Test yourself</h3>
+  <div class="fc-bar">
+    <span style="color:var(--muted);font-size:14px">Say the answer out loud first. Then tap the card.</span>
+    <button class="btn" type="button" id="fcAll">Show all answers</button>
+  </div>
+  <div class="fc-grid" id="fcGrid">
+    <button class="fc" type="button"><span class="q">Hall call vs car call?</span><span class="a">Hall call: on a floor, floor + direction; the controller must <i>pick a car</i>. Car call: inside a known car, just a floor; no dispatch.</span></button>
+    <button class="fc" type="button"><span class="q">Why a TreeSet for stops?</span><span class="a">Sorted and unique. <code>ceiling(f)</code> / <code>floor(f)</code> give the next stop above / below in O(log n). A duplicate press costs nothing.</span></button>
+    <button class="fc" type="button"><span class="q">State the LOOK rule.</span><span class="a">Keep the direction while a stop lies ahead. When none is left, turn. (SCAN would go to the last floor first.)</span></button>
+    <button class="fc" type="button"><span class="q">Car at 7, idle. Riders press 2, 9, 5. Order?</span><span class="a">2 sets direction DOWN. Then 5, 2, turn, 9. Stop 9 waits; it is behind the car.</span></button>
+    <button class="fc" type="button"><span class="q">E1 goes UP 0 → 4. E2 idle at 0. ▼ on floor 2: who?</span><span class="a">E1 is not on the way (wrong direction): 4 + 2 = 6. E2 idle: 2. → E2.</span></button>
+    <button class="fc" type="button"><span class="q">Why Strategy for dispatch?</span><span class="a">The rule changes (nearest, least busy, zones, peak modes). Each rule is a class; <code>setStrategy</code> swaps it at runtime with no change to the controller.</span></button>
+    <button class="fc" type="button"><span class="q">When can a car go to maintenance?</span><span class="a">Only with no stops left. Then the strategy filters it out and car calls are rejected.</span></button>
+    <button class="fc" type="button"><span class="q">Do we need concurrency?</span><span class="a">In a real building, yes. One controller thread reads a queue of presses (no locks), or lock <code>select</code> + <code>addStop</code> together and synchronize <code>Elevator</code>.</span></button>
+  </div>
+</div>
+<footer class="prose">Notes for revision. Code in <code>Low-Level-Design/src/main/java/org/nailyourinterview/lld/elevator</code>. Layout inspired by the AlgoMaster LLD format.</footer>
+</section>
+
+</main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+<script>
+(function(){
+/* ---------- theme ---------- */
+const root = document.documentElement;
+try { const t = localStorage.getItem('sl-theme'); if (t) root.dataset.theme = t; } catch(e){}
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('sl-theme', root.dataset.theme); } catch(e){}
+});
+
+/* ---------- toc, scrollspy, progress ---------- */
+document.getElementById('mtoc').innerHTML = document.getElementById('toc').innerHTML.replace(/<h4>.*?<\/h4>/,'');
+const links = [...document.querySelectorAll('#toc a')];
+const obs = new IntersectionObserver(es => {
+  es.forEach(e => { if (e.isIntersecting) links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id)); });
+}, { rootMargin: '-30% 0px -65% 0px' });
+document.querySelectorAll('main section').forEach(s => obs.observe(s));
+const bar = document.getElementById('progress');
+addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - innerHeight;
+  bar.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%';
+}, { passive: true });
+
+/* ---------- copy buttons ---------- */
+document.querySelectorAll('.code .copy').forEach(b => b.addEventListener('click', () => {
+  const txt = b.closest('.code').querySelector('code').innerText;
+  navigator.clipboard && navigator.clipboard.writeText(txt).then(() => { b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1200); });
+}));
+
+/* ---------- SVG diagram engine (miro-style) ---------- */
+const NS = 'http://www.w3.org/2000/svg';
+const FONT = "Inter, 'Segoe UI', Arial, sans-serif";
+const MONO = "'JetBrains Mono', Consolas, 'Courier New', monospace";
+function el(tag, attrs, parent){ const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; }
+function txt(parent, x, y, s, attrs){ const t = el('text', Object.assign({x, y, style: 'font-variant-ligatures:none'}, attrs || {}), parent); t.textContent = s; return t; }
+
+function setupCanvas(svg){
+  const defs = el('defs', {}, svg);
+  const pat = el('pattern', {id: svg.id + '-dots', width: 22, height: 22, patternUnits: 'userSpaceOnUse'}, defs);
+  el('circle', {cx: 2, cy: 2, r: 1.2, fill: '#d5d9e0'}, pat);
+  const f = el('filter', {id: svg.id + '-sh', x: '-10%', y: '-10%', width: '130%', height: '140%'}, defs);
+  el('feDropShadow', {dx: 0, dy: 3, stdDeviation: 4, 'flood-color': '#1f2a44', 'flood-opacity': .14}, f);
+  const vb = svg.viewBox.baseVal;
+  el('rect', {x: 0, y: 0, width: vb.width, height: vb.height, fill: '#fbfbfc'}, svg);
+  el('rect', {x: 0, y: 0, width: vb.width, height: vb.height, fill: `url(#${svg.id}-dots)`}, svg);
+  return { edges: el('g', {}, svg), nodes: el('g', {}, svg), deco: el('g', {}, svg), labels: el('g', {}, svg) };
+}
+
+const PALETTE = {
+  yellow: ['#FFF6C7', '#FFD43B', '#8a6d00'],
+  blue:   ['#E3EEFF', '#7DAEF8', '#1d4f99'],
+  sky:    ['#EAF4FF', '#A8CCFB', '#1d4f99'],
+  green:  ['#E2F7E7', '#69C985', '#1b6b34'],
+  purple: ['#EFE7FF', '#A98BF5', '#4b2ea3'],
+  orange: ['#FFEADB', '#FFA463', '#8a3b00'],
+  red:    ['#FFE3E3', '#F27474', '#8f1d1d'],
+  teal:   ['#DBF7EF', '#45C9A4', '#0d6650'],
+  pink:   ['#FDE6F4', '#EA82C0', '#8a1e5c'],
+  gray:   ['#EFF1F4', '#A9B1BD', '#3d4450']
+};
+
+function classBox(g, svgId, b){
+  const [body, head, ink] = PALETTE[b.c];
+  const LH = 17, PAD = 8, headH = b.st ? 48 : 34;
+  const fH = b.f.length ? b.f.length * LH + PAD * 2 : 0;
+  const mH = b.m.length ? b.m.length * LH + PAD * 2 : 0;
+  const h = headH + fH + mH;
+  const grp = el('g', {transform: `translate(${b.x},${b.y})`, filter: `url(#${svgId}-sh)`}, g);
+  el('rect', {width: b.w, height: h, rx: 12, fill: body, stroke: head, 'stroke-width': 1.5}, grp);
+  el('path', {d: `M0 12 A12 12 0 0 1 12 0 H${b.w - 12} A12 12 0 0 1 ${b.w} 12 V${headH} H0 Z`, fill: head}, grp);
+  if (b.st) txt(grp, b.w / 2, 18, b.st, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 11.5, 'font-style': 'italic', fill: '#1f2328', opacity: .75});
+  txt(grp, b.w / 2, b.st ? 38 : 23, b.name, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 16, 'font-weight': 800, fill: '#1f2328', 'font-style': b.abs ? 'italic' : 'normal'});
+  let y = headH;
+  if (b.f.length){
+    b.f.forEach((s, i) => txt(grp, 12, y + PAD + LH * (i + 1) - 4, s, {'font-family': MONO, 'font-size': 12.5, fill: ink}));
+    y += fH;
+    if (b.m.length) el('line', {x1: 0, y1: y, x2: b.w, y2: y, stroke: head, 'stroke-width': 1}, grp);
+  }
+  b.m.forEach((s, i) => txt(grp, 12, y + PAD + LH * (i + 1) - 4, s, {'font-family': MONO, 'font-size': 12.5, fill: '#1f2328'}));
+  b.h = h;
+}
+
+function roundedPath(pts, r){
+  if (pts.length < 3) return `M${pts[0][0]} ${pts[0][1]} L${pts[1][0]} ${pts[1][1]}`;
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++){
+    const [px, py] = pts[i - 1], [cx, cy] = pts[i], [nx, ny] = pts[i + 1];
+    const l1 = Math.hypot(cx - px, cy - py), l2 = Math.hypot(nx - cx, ny - cy);
+    const rr = Math.min(r, l1 / 2, l2 / 2);
+    const ax = cx - (cx - px) / l1 * rr, ay = cy - (cy - py) / l1 * rr;
+    const bx = cx + (nx - cx) / l2 * rr, by = cy + (ny - cy) / l2 * rr;
+    d += ` L${ax} ${ay} Q${cx} ${cy} ${bx} ${by}`;
+  }
+  const last = pts[pts.length - 1];
+  return d + ` L${last[0]} ${last[1]}`;
+}
+function unit(a, b){ const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; }
+
+function edge(L, e){
+  const color = e.color || '#4a5263';
+  const dashed = e.kind === 'dep';
+  el('path', {d: roundedPath(e.p, 14), fill: 'none', stroke: color, 'stroke-width': 1.8, 'stroke-dasharray': dashed ? '6 5' : 'none', 'stroke-linecap': 'round'}, L.edges);
+  const p0 = e.p[0], p1 = e.p[1], pn = e.p[e.p.length - 1], pm = e.p[e.p.length - 2];
+  if (e.kind === 'comp' || e.kind === 'agg'){
+    const [ux, uy] = unit(p0, p1), vx = -uy, vy = ux;
+    const pt = (a, b) => `${p0[0] + ux * a + vx * b},${p0[1] + uy * a + vy * b}`;
+    el('polygon', {points: [pt(0, 0), pt(9, 6), pt(18, 0), pt(9, -6)].join(' '), fill: e.kind === 'comp' ? color : '#ffffff', stroke: color, 'stroke-width': 1.6}, L.deco);
+  }
+  if (e.kind === 'inh'){
+    const [ux, uy] = unit(pm, pn), vx = -uy, vy = ux;
+    const pt = (a, b) => `${pn[0] - ux * a + vx * b},${pn[1] - uy * a + vy * b}`;
+    el('polygon', {points: [pt(0, 0), pt(16, 9), pt(16, -9)].join(' '), fill: '#ffffff', stroke: color, 'stroke-width': 1.6}, L.deco);
+  }
+  if (e.kind === 'dep' || e.kind === 'assoc'){
+    const [ux, uy] = unit(pm, pn), vx = -uy, vy = ux;
+    const pt = (a, b) => `${pn[0] - ux * a + vx * b},${pn[1] - uy * a + vy * b}`;
+    el('polyline', {points: [pt(12, 7), pt(0, 0), pt(12, -7)].join(' '), fill: 'none', stroke: color, 'stroke-width': 1.8, 'stroke-linejoin': 'round', 'stroke-linecap': 'round'}, L.deco);
+  }
+  if (e.kind === 'flow'){
+    const [ux, uy] = unit(pm, pn), vx = -uy, vy = ux;
+    const pt = (a, b) => `${pn[0] - ux * a + vx * b},${pn[1] - uy * a + vy * b}`;
+    el('polygon', {points: [pt(0, 0), pt(12, 6), pt(12, -6)].join(' '), fill: color}, L.deco);
+  }
+  if (e.kind === 'merge') el('circle', {cx: pn[0], cy: pn[1], r: 4, fill: color}, L.deco);
+  if (e.label) label(L, e.label[0], e.label[1], e.label[2], e.labelColor, e.labelSize);
+}
+function label(L, x, y, s, color, size){
+  const t = txt(L.labels, x, y + (size ? size / 3 : 4), s, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': size || 12, 'font-weight': 600, fill: color || '#3d4450'});
+  const bb = t.getBBox();
+  const r = el('rect', {x: bb.x - 7, y: bb.y - 3, width: bb.width + 14, height: bb.height + 6, rx: 9, fill: '#ffffff', stroke: '#d9dde4'});
+  L.labels.insertBefore(r, t);
+}
+function sticky(L, svgId, x, y, w, h, color, title, lines, rot, fs){
+  fs = fs || 13;
+  const g = el('g', {transform: `translate(${x},${y}) rotate(${rot || 0})`, filter: `url(#${svgId}-sh)`}, L.nodes);
+  el('rect', {width: w, height: h, rx: 4, fill: color}, g);
+  txt(g, 14, 12 + fs + 1, title, {'font-family': FONT, 'font-size': fs + 1, 'font-weight': 800, fill: '#1f2328'});
+  lines.forEach((s, i) => txt(g, 14, 24 + fs * 2 + i * fs * 1.45, s, {'font-family': FONT, 'font-size': fs, fill: '#2f3540'}));
+  return g;
+}
+
+/* ---------- class diagram ---------- */
+(function(){
+  const svg = document.getElementById('classSvg');
+  const L = setupCanvas(svg);
+  txt(L.labels, 40, 34, 'Elevator System — Class Diagram', {'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+  const boxes = [
+    {name: 'ElevatorController', st: '«service»', x: 470, y: 70, w: 440, c: 'yellow', f: ['- topFloor: int', '- elevators: List<Elevator>', '- strategy: SchedulingStrategy', '- tick: int'], m: ['+ requestElevator(floor, Direction)', '+ selectFloor(elevatorId, floor)', '+ setMaintenance(elevatorId, on)', '+ step()', '+ runUntilIdle()', '+ setStrategy(SchedulingStrategy)', '- isValidFloor(floor): boolean']},
+    {name: 'Elevator', x: 470, y: 430, w: 440, c: 'blue', f: ['- id: String', '- currentFloor: int', '- direction: Direction', '- doorsOpen: boolean', '- inService: boolean', '- stops: TreeSet<Integer>'], m: ['+ addStop(floor)', '+ hasStops(): boolean', '+ lastStop(): int', '+ step()   // one floor per tick', '- nextStop(): Integer   // LOOK', '- stopHere()', '+ status(): String']},
+    {name: 'Direction', st: '«enum»', x: 470, y: 800, w: 440, c: 'gray', f: ['UP, DOWN, IDLE'], m: []},
+    {name: 'SchedulingStrategy', st: '«interface»', abs: true, x: 980, y: 70, w: 400, c: 'purple', f: [], m: ['+ select(elevators, request): Elevator']},
+    {name: 'NearestElevatorStrategy', x: 980, y: 250, w: 400, c: 'purple', f: [], m: ['+ select(elevators, request): Elevator', '- cost(elevator, request): int']},
+    {name: 'Request', st: '«value»', x: 980, y: 430, w: 400, c: 'green', f: ['- floor: int', '- direction: Direction'], m: []}
+  ];
+  boxes.forEach(b => classBox(L.nodes, svg.id, b));
+  /* Controller 70..337, Elevator 430..717, Direction 800..881,
+     Strategy 70..151, Nearest 250..334, Request 430..528 */
+  const E = [
+    {kind: 'comp', p: [[690, 337], [690, 430]], label: [690, 383, 'has many']},
+    {kind: 'agg',  p: [[910, 110], [980, 110]], label: [945, 110, 'has a']},
+    {kind: 'inh',  p: [[1180, 250], [1180, 151]], label: [1180, 200, 'is a']},
+    {kind: 'dep',  p: [[910, 300], [945, 300], [945, 470], [980, 470]], label: [945, 385, 'creates']},
+    {kind: 'dep',  p: [[1180, 334], [1180, 430]], label: [1180, 382, 'uses']},
+    {kind: 'dep',  p: [[1380, 292], [1400, 292], [1400, 640], [910, 640]], label: [1150, 640, 'uses']},
+    {kind: 'dep',  p: [[690, 717], [690, 800]], label: [690, 758, 'uses']}
+  ];
+  E.forEach(e => edge(L, e));
+
+  // legend
+  const lg = el('g', {transform: 'translate(40,640)', filter: `url(#${svg.id}-sh)`}, L.nodes);
+  el('rect', {width: 300, height: 246, rx: 12, fill: '#ffffff', stroke: '#dfe3ea'}, lg);
+  txt(lg, 16, 28, 'Legend', {'font-family': FONT, 'font-size': 14, 'font-weight': 800, fill: '#1f2328'});
+  const LL = {edges: lg, deco: lg, labels: lg};
+  const items = [['comp', 'Composition (owns, same lifetime)'], ['agg', 'Aggregation (has, lives outside)'], ['assoc', 'Association (knows about)'], ['dep', 'Dependency (uses / creates)'], ['inh', 'Inheritance (is-a)']];
+  items.forEach(([k, s], i) => {
+    const y = 60 + i * 36;
+    edge(LL, {kind: k, p: [[18, y], [72, y]]});
+    txt(lg, 86, y + 4, s, {'font-family': FONT, 'font-size': 12.5, fill: '#2f3540'});
+  });
+  txt(lg, 16, 234, '- private   + public   # protected', {'font-family': MONO, 'font-size': 11.5, fill: '#5b6471'});
+
+  // sticky notes
+  sticky(L, svg.id, 40, 90, 380, 160, '#FFF3A3', '🔁 LOOK in nextStop()', ['UP → stops.ceiling(floor)', 'DOWN → stops.floor(floor)', 'nothing ahead → nearest = turn', 'TreeSet: sorted, no duplicates'], -1, 15);
+  sticky(L, svg.id, 980, 720, 400, 130, '#D3F5E1', '🧭 Two questions, two places', ['Which car? → Strategy (read-only)', 'Which order? → Elevator.step()'], 1, 15);
+})();
+
+/* ---------- state diagram ---------- */
+(function(){
+  const svg = document.getElementById('stateSvg');
+  const L = setupCanvas(svg);
+  txt(L.labels, 30, 34, 'Direction of one car', {'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+  function node(x, y, w, h, c, t){
+    const [body, head] = PALETTE[c];
+    const g = el('g', {filter: `url(#${svg.id}-sh)`}, L.nodes);
+    el('rect', {x: x - w / 2, y: y - h / 2, width: w, height: h, rx: h / 2, fill: body, stroke: head, 'stroke-width': 2.5}, g);
+    txt(g, x, y + 6, t, {'text-anchor': 'middle', 'font-family': MONO, 'font-size': 16, 'font-weight': 700, fill: '#1f2328'});
+  }
+  node(110, 300, 160, 60, 'gray', 'OFF');
+  node(420, 300, 170, 64, 'sky', 'IDLE');
+  node(850, 130, 240, 64, 'green', 'UP');
+  node(850, 470, 240, 64, 'orange', 'DOWN');
+  el('circle', {cx: 380, cy: 200, r: 9, fill: '#1f2328'}, L.nodes);
+  const F = [
+    {p: [[380, 209], [380, 268]]},
+    {p: [[335, 282], [190, 282]], label: [262, 282, 'maint. on']},
+    {p: [[190, 318], [335, 318]], label: [262, 318, 'maint. off']},
+    {p: [[460, 268], [460, 118], [730, 118]], label: [595, 118, 'addStop(above)']},
+    {p: [[790, 162], [790, 284], [505, 284]], label: [650, 284, 'last stop']},
+    {p: [[790, 438], [790, 316], [505, 316]], label: [650, 316, 'last stop']},
+    {p: [[460, 332], [460, 482], [730, 482]], label: [595, 482, 'addStop(below)']},
+    {p: [[890, 162], [890, 438]], label: [880, 240, 'no stop above']},
+    {p: [[950, 438], [950, 162]], label: [960, 360, 'no stop below']},
+    {p: [[800, 98], [800, 56], [900, 56], [900, 98]], label: [850, 56, 'step(): floor + 1']},
+    {p: [[900, 502], [900, 548], [800, 548], [800, 502]], label: [850, 548, 'step(): floor − 1']}
+  ];
+  F.forEach(e => edge(L, {kind: 'flow', p: e.p, label: e.label, color: '#4a5263'}));
+  sticky(L, svg.id, 30, 70, 290, 100, '#FFF3A3', '⏱ One tick', ['step() moves one floor.', 'At a stop: doors OPEN.'], 0, 14);
+  sticky(L, svg.id, 30, 420, 290, 120, '#D3F5E1', '🔧 OFF', ['Only from IDLE (no stops).', 'Strategy skips it.', 'Car calls are rejected.'], 0, 14);
+})();
+
+/* ---------- flowchart ---------- */
+(function(){
+  const svg = document.getElementById('flowSvg');
+  const L = setupCanvas(svg);
+  txt(L.labels, 30, 34, 'Elevator.step()  — one tick', {'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+  function node(n){
+    const [body, head] = PALETTE[n.c];
+    const g = el('g', {filter: `url(#${svg.id}-sh)`}, L.nodes);
+    const x = n.x - n.w / 2, y = n.y - n.h / 2;
+    if (n.shape === 'dec') el('polygon', {points: `${n.x},${y} ${x + n.w},${n.y} ${n.x},${y + n.h} ${x},${n.y}`, fill: body, stroke: head, 'stroke-width': 2}, g);
+    else el('rect', {x, y, width: n.w, height: n.h, rx: n.shape === 'term' ? n.h / 2 : 10, fill: body, stroke: head, 'stroke-width': 2}, g);
+    const lines = n.t.split('\n');
+    lines.forEach((s, i) => txt(g, n.x, n.y + 5 + (i - (lines.length - 1) / 2) * 18, s, {'text-anchor': 'middle', 'font-family': n.mono ? MONO : FONT, 'font-size': n.mono ? 13 : 14, 'font-weight': n.mono ? 500 : 700, fill: '#1f2328'}));
+  }
+  const N = [
+    {x: 480, y: 80,  w: 300, h: 46, shape: 'term', c: 'purple', t: 'step()', mono: true},
+    {x: 480, y: 160, w: 300, h: 46, c: 'blue', t: 'doorsOpen = false', mono: true},
+    {x: 480, y: 240, w: 320, h: 46, c: 'blue', t: 'target = nextStop()', mono: true},
+    {x: 480, y: 350, w: 280, h: 96, shape: 'dec', c: 'yellow', t: 'target == null ?', mono: true},
+    {x: 800, y: 350, w: 220, h: 58, c: 'gray', t: 'direction = IDLE\nend of tick'},
+    {x: 480, y: 480, w: 340, h: 100, shape: 'dec', c: 'yellow', t: 'target == floor ?', mono: true},
+    {x: 800, y: 480, w: 220, h: 58, c: 'green', t: 'stopHere()\nend of tick'},
+    {x: 480, y: 600, w: 340, h: 58, c: 'blue', t: 'direction =\ntarget > floor ? UP : DOWN', mono: true},
+    {x: 480, y: 690, w: 340, h: 46, c: 'blue', t: 'floor += (UP ? 1 : -1)', mono: true},
+    {x: 480, y: 800, w: 340, h: 100, shape: 'dec', c: 'yellow', t: 'stops has floor ?', mono: true},
+    {x: 800, y: 800, w: 220, h: 58, c: 'green', t: 'stopHere()\ndoors OPEN'},
+    {x: 480, y: 910, w: 300, h: 46, shape: 'term', c: 'green', t: 'next tick', mono: true}
+  ];
+  N.forEach(node);
+  sticky(L, svg.id, 20, 250, 250, 160, '#FFF3A3', '🔁 nextStop() = LOOK', ['UP → ceiling(floor)', 'DOWN → floor(floor)', 'none ahead → nearest', '= turn around'], 0, 14);
+  sticky(L, svg.id, 20, 560, 250, 130, '#D3F5E1', '🚪 stopHere()', ['stops.remove(floor)', 'doorsOpen = true', 'no stops → IDLE'], 0, 14);
+  const F = [
+    {kind: 'flow', p: [[480, 103], [480, 137]]},
+    {kind: 'flow', p: [[480, 183], [480, 217]]},
+    {kind: 'flow', p: [[480, 263], [480, 302]]},
+    {kind: 'flow', p: [[620, 350], [690, 350]], label: [655, 350, 'yes'], labelColor: '#cf222e'},
+    {kind: 'flow', p: [[480, 398], [480, 430]], label: [504, 414, 'no'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[650, 480], [690, 480]], label: [670, 456, 'yes'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[480, 530], [480, 571]], label: [504, 550, 'no'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[480, 629], [480, 667]]},
+    {kind: 'flow', p: [[480, 713], [480, 750]]},
+    {kind: 'flow', p: [[650, 800], [690, 800]], label: [670, 776, 'yes'], labelColor: '#1a7f37'},
+    {kind: 'flow', p: [[480, 850], [480, 887]], label: [504, 868, 'no'], labelColor: '#3d4450'},
+    {kind: 'flow', p: [[800, 829], [800, 910], [630, 910]]},
+    {kind: 'flow', p: [[330, 910], [290, 910], [290, 80], [330, 80]], label: [290, 190, 'tick++'], labelColor: '#5b5bd6'}
+  ];
+  F.forEach(e => edge(L, e));
+})();
+
+/* ---------- interview flow ---------- */
+(function(){
+  const svg = document.getElementById('stepsSvg');
+  const L = setupCanvas(svg);
+  const X = 440, W = 260, H = 64;
+  const steps = [
+    {t: 'Understand the system', c: 'gray', y: 40, href: '#overview'},
+    {t: 'Requirement gathering', c: 'yellow', y: 170, href: '#requirements'},
+    {t: 'Core entities + breakdown', c: 'red', y: 320, href: '#entities'},
+    {t: 'Class diagram with flow', c: 'purple', y: 470, href: '#classes'},
+    {t: 'Working code', c: 'gray', y: 610, href: '#code'}
+  ];
+  steps.forEach((st, i) => {
+    const [body, head] = PALETTE[st.c];
+    const a = el('a', {href: st.href}, L.nodes);
+    const g = el('g', {filter: `url(#${svg.id}-sh)`, style: 'cursor:pointer'}, a);
+    el('rect', {x: X, y: st.y, width: W, height: H, rx: 10, fill: body, stroke: head, 'stroke-width': 2.5}, g);
+    txt(g, X + W / 2, st.y + H / 2 + 6, st.t, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 17, 'font-weight': 800, fill: '#1f2328'});
+    if (i) edge(L, {kind: 'flow', p: [[X + W / 2, steps[i - 1].y + H], [X + W / 2, st.y]], color: '#1f2328'});
+  });
+
+  // the 3 requirement buckets
+  const ry = 170 + H / 2;
+  sticky(L, svg.id, 790, 20, 380, 110, '#FFF3A3', '① Extensibility (new features)', ['New dispatch rule → SchedulingStrategy', 'Displays, app → Observer', 'Door timer, fire mode → State'], 0);
+  sticky(L, svg.id, 790, 150, 380, 110, '#D3F5E1', '② Dynamic (user input)', ['Floors, cars, strategy at startup', 'Hall + car calls at any time', 'Validate floor, button, car id'], 0);
+  sticky(L, svg.id, 790, 280, 380, 110, '#FFE3E3', '③ High traffic (concurrency)', ['Real building: many presses at once', 'One controller thread + queue', 'or lock select + addStop together'], 0);
+  [75, 205, 335].forEach(y => edge(L, {kind: 'dep', p: [[X + W, ry], [745, ry], [745, y], [790, y]]}));
+
+  // side notes per step
+  sticky(L, svg.id, 40, 22, 340, 100, '#E3EEFF', 'Ride it in your head', ['▲ on 4 → a car comes → press 7', 'Which car? In which order?'], 0);
+  edge(L, {kind: 'dep', p: [[X, 72], [380, 72]]});
+  sticky(L, svg.id, 40, 290, 340, 120, '#EFE7FF', 'Nouns → classes', ['ElevatorController, Elevator', 'Request, SchedulingStrategy', 'Direction · stops = TreeSet'], 0);
+  edge(L, {kind: 'dep', p: [[X, 352], [380, 352]]});
+  sticky(L, svg.id, 790, 455, 380, 92, '#EFF1F4', 'Relationships + movement', ['has many → Controller has Elevators', 'is a → Nearest is a SchedulingStrategy'], 0);
+  edge(L, {kind: 'dep', p: [[X + W, 502], [790, 502]]});
+  sticky(L, svg.id, 790, 595, 380, 92, '#EFF1F4', 'Build bottom-up', ['Direction, Request, Elevator', '→ Strategy → Controller → Main'], 0);
+  edge(L, {kind: 'dep', p: [[X + W, 642], [790, 642]]});
+
+  // which round covers which steps
+  txt(L.labels, 40, 560, 'LLD round', {'font-family': FONT, 'font-size': 14, 'font-weight': 800, fill: '#5b5bd6'});
+  txt(L.labels, 40, 582, 'Requirements → Entities → Class diagram', {'font-family': FONT, 'font-size': 13, fill: '#2f3540'});
+  txt(L.labels, 40, 620, 'Machine coding round', {'font-family': FONT, 'font-size': 14, 'font-weight': 800, fill: '#e8590c'});
+  txt(L.labels, 40, 642, 'Entities → Working code', {'font-family': FONT, 'font-size': 13, fill: '#2f3540'});
+})();
+
+/* ---------- revision diagram ---------- */
+(function(){
+  const svg = document.getElementById('revSvg');
+  const L = setupCanvas(svg);
+  const FLOW = '#5b5bd6', STRUCT = '#9aa3b2';
+  function box(x, y, w, h, c, name, sub){
+    const [body, head] = PALETTE[c];
+    const g = el('g', {filter: `url(#${svg.id}-sh)`}, L.nodes);
+    el('rect', {x, y, width: w, height: h, rx: 12, fill: body, stroke: head, 'stroke-width': 2.5}, g);
+    txt(g, x + w / 2, y + (sub ? 32 : h / 2 + 7), name, {'text-anchor': 'middle', 'font-family': FONT, 'font-size': 20, 'font-weight': 800, fill: '#1f2328'});
+    if (sub) txt(g, x + w / 2, y + 56, sub, {'text-anchor': 'middle', 'font-family': MONO, 'font-size': 14, fill: '#3d4450'});
+  }
+  box(20, 40, 200, 72, 'gray', 'Person', 'hall · car button');
+  box(380, 40, 240, 72, 'yellow', 'Controller', 'validate · route');
+  box(380, 220, 240, 72, 'purple', 'Strategy', 'picks a car');
+  box(380, 400, 240, 72, 'green', 'Request', 'floor + direction');
+  box(760, 40, 220, 72, 'blue', 'Elevator', 'floor · direction');
+  box(760, 220, 220, 72, 'sky', 'stops', 'TreeSet<Integer>');
+
+  // structure: has-a (grey)
+  [
+    {kind: 'comp', p: [[600, 40], [600, 18], [870, 18], [870, 40]]},
+    {kind: 'agg',  p: [[580, 112], [580, 220]]},
+    {kind: 'comp', p: [[940, 112], [940, 220]]},
+    {kind: 'dep',  p: [[380, 104], [340, 104], [340, 436], [380, 436]]}
+  ].forEach(e => edge(L, Object.assign({color: STRUCT}, e)));
+
+  // flow: numbered calls for one hall call (purple)
+  [
+    {p: [[220, 56], [380, 56]], label: [300, 56, '1 · requestElevator()'], size: 14},
+    {p: [[460, 112], [460, 220]], label: [460, 166, '2 · select()']},
+    {p: [[620, 62], [760, 62]], label: [690, 62, '3 · addStop()'], size: 14},
+    {p: [[620, 96], [760, 96]], label: [690, 96, '4 · step() ×N'], size: 14},
+    {p: [[830, 112], [830, 220]], label: [830, 166, '5 · nextStop()'], size: 15},
+    {p: [[220, 96], [380, 96]], label: [300, 96, '6 · selectFloor()'], size: 14}
+  ].forEach(e => edge(L, {kind: 'flow', p: e.p, color: FLOW, label: e.label, labelColor: FLOW, labelSize: e.size || 16}));
+
+  // notes
+  sticky(L, svg.id, 730, 330, 250, 116, '#FFF3A3', '💡 Key idea', ['Strategy picks the car.', 'Elevator picks the order', '(LOOK on a TreeSet).'], 1, 15);
+  sticky(L, svg.id, 40, 200, 260, 116, '#D3F5E1', '↩ After 6', ['doors open → rider', 'presses 7 → addStop(7)', '→ step() until IDLE'], -1, 15);
+
+  // legend
+  const lg = el('g', {transform: 'translate(40,500)'}, L.labels);
+  el('line', {x1: 0, y1: 10, x2: 44, y2: 10, stroke: STRUCT, 'stroke-width': 2.5}, lg);
+  txt(lg, 54, 16, 'structure: has-a / creates', {'font-family': FONT, 'font-size': 17, fill: '#3d4450'});
+  el('line', {x1: 0, y1: 42, x2: 44, y2: 42, stroke: FLOW, 'stroke-width': 2.5}, lg);
+  txt(lg, 54, 48, '1 → 6  calls for one hall call', {'font-family': FONT, 'font-size': 17, 'font-weight': 700, fill: FLOW});
+})();
+
+/* ---------- PNG export + fullscreen ---------- */
+document.querySelectorAll('[data-png]').forEach(b => b.addEventListener('click', () => {
+  const svg = document.getElementById(b.dataset.png);
+  const vb = svg.viewBox.baseVal, k = 2;
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('width', vb.width); clone.setAttribute('height', vb.height);
+  const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = vb.width * k; c.height = vb.height * k;
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fbfbfc'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    c.toBlob(blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = b.dataset.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
+  };
+  img.src = src;
+}));
+document.querySelectorAll('[data-fs]').forEach(b => b.addEventListener('click', () => {
+  const f = document.getElementById(b.dataset.fs);
+  if (document.fullscreenElement) document.exitFullscreen(); else f.requestFullscreen && f.requestFullscreen();
+}));
+
+/* ---------- simulator (mirrors ElevatorController + Elevator + NearestElevatorStrategy) ---------- */
+const TOP = 9;
+const logEl = document.getElementById('log');
+let S, auto = null;
+function log(html, call){ const li = document.createElement('li'); li.innerHTML = html + (call ? `<span class="call">${call}</span>` : ''); logEl.prepend(li); while (logEl.children.length > 40) logEl.lastChild.remove(); }
+const mkE = id => ({id, floor: 0, dir: 'IDLE', open: false, on: true, stops: new Set()});
+const sorted = e => [...e.stops].sort((a, b) => a - b);
+function addStop(e, f){                                  // Elevator.addStop()
+  e.stops.add(f);
+  if (e.dir === 'IDLE' && f !== e.floor) e.dir = f > e.floor ? 'UP' : 'DOWN';
+}
+function lastStop(e){ const s = sorted(e); if (!s.length) return e.floor; return e.dir === 'DOWN' ? s[0] : s[s.length - 1]; }
+function nextStop(e){                                    // Elevator.nextStop(): LOOK
+  const s = sorted(e), above = s.find(x => x >= e.floor), below = [...s].reverse().find(x => x <= e.floor);
+  if (e.dir === 'UP' && above !== undefined) return above;
+  if (e.dir === 'DOWN' && below !== undefined) return below;
+  if (above === undefined) return below;
+  if (below === undefined) return above;
+  return above - e.floor <= e.floor - below ? above : below;
+}
+function stopHere(e){
+  e.stops.delete(e.floor); e.open = true;
+  if (!e.stops.size) e.dir = 'IDLE';
+  Object.keys(S.hall).forEach(k => { if (S.hall[k] === e.id && parseInt(k) === e.floor) delete S.hall[k]; });
+}
+function stepE(e){                                       // Elevator.step()
+  e.open = false;
+  const t = nextStop(e);
+  if (t === undefined){ e.dir = 'IDLE'; return; }
+  if (t === e.floor){ stopHere(e); return; }
+  e.dir = t > e.floor ? 'UP' : 'DOWN';
+  e.floor += e.dir === 'UP' ? 1 : -1;
+  if (e.stops.has(e.floor)) stopHere(e);
+}
+function cost(e, f, d){                                  // NearestElevatorStrategy.cost()
+  if (e.dir === 'IDLE') return Math.abs(e.floor - f);
+  const onWay = e.dir === d && (d === 'UP' ? e.floor <= f : e.floor >= f);
+  if (onWay) return Math.abs(e.floor - f);
+  const end = lastStop(e);
+  return Math.abs(e.floor - end) + Math.abs(end - f);
+}
+function hallCall(f, d){
+  const cands = S.els.filter(e => e.on);
+  if (!cands.length){ log('No elevator available. Try again later.', 'strategy.select() → null'); return; }
+  const costs = cands.map(e => cost(e, f, d));
+  let best = 0; costs.forEach((c, i) => { if (c < costs[best]) best = i; });
+  const e = cands[best];
+  addStop(e, f); S.hall[f + d] = e.id;
+  log(`Hall call <b>${f} ${d}</b> → <b>${e.id}</b>`, `select(): cost ${cands.map((x, i) => x.id + '=' + costs[i]).join(', ')} → ${e.id}.addStop(${f})`);
+}
+function carCall(e, f){
+  if (!e.on){ log(`${e.id} is out of service.`, 'selectFloor() → !inService'); return; }
+  addStop(e, f);
+  log(`Inside ${e.id}: floor <b>${f}</b>`, `${e.id}.addStop(${f}) → stops [${sorted(e).join(', ')}], ${e.dir}`);
+}
+function tick(){
+  S.t++;
+  S.els.forEach(stepE);
+  S.els.forEach(e => { if (e.open) log(`🚪 ${e.id} doors open at floor <b>${e.floor}</b>`, `t${String(S.t).padStart(2, '0')} · ${e.id}.step() → stopHere()`); });
+}
+const ARROW = {UP: '▲', DOWN: '▼', IDLE: ''};
+function render(){
+  document.getElementById('elTick').textContent = 't' + String(S.t).padStart(2, '0');
+  const g = document.getElementById('elGrid'); g.innerHTML = '';
+  const add = (cls, html) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; g.appendChild(d); return d; };
+  add('bld-h', 'Floor'); add('bld-h', 'Hall');
+  S.els.forEach(e => add('bld-h', `${e.id} · ${e.on ? e.dir : 'OFF'}`));
+  for (let f = TOP; f >= 0; f--){
+    add('bld-fl', f);
+    const hall = add('bld-hall', '');
+    [['UP', '▲'], ['DOWN', '▼']].forEach(([d, sym]) => {
+      const b = document.createElement('button'); b.type = 'button';
+      const none = (f === TOP && d === 'UP') || (f === 0 && d === 'DOWN');
+      b.className = 'hb' + (S.hall[f + d] ? ' lit' : '') + (none ? ' none' : '');
+      b.textContent = sym; b.title = `${d} on floor ${f}`;
+      b.addEventListener('click', () => { hallCall(f, d); render(); });
+      hall.appendChild(b);
+    });
+    S.els.forEach(e => {
+      const sh = add('shaft' + (e.stops.has(f) ? ' stop' : ''), '');
+      if (e.floor === f) sh.innerHTML = `<div class="cab${e.open ? ' open' : ''}${e.on ? '' : ' off'}">${e.id} ${e.open ? '◀▶' : ARROW[e.dir]}</div>`;
+    });
+  }
+  const p = document.getElementById('elPanels'); p.innerHTML = '';
+  S.els.forEach(e => {
+    const row = document.createElement('div'); row.className = 'panel'; row.style.width = '100%';
+    row.innerHTML = `<b>${e.id}</b>`;
+    for (let f = 0; f <= TOP; f++){
+      const b = document.createElement('button'); b.type = 'button';
+      b.className = 'cb' + (e.stops.has(f) ? ' lit' : ''); b.textContent = f; b.title = `Inside ${e.id}: floor ${f}`;
+      b.addEventListener('click', () => { carCall(e, f); render(); });
+      row.appendChild(b);
+    }
+    p.appendChild(row);
+  });
+  document.getElementById('elMaint').textContent = S.els[1].on ? '🔧 E2 off' : '✓ E2 on';
+}
+function stopAuto(){ clearInterval(auto); auto = null; document.getElementById('elAuto').textContent = '▶ Auto'; }
+function elReset(){
+  stopAuto();
+  S = {t: 0, els: [mkE('E1'), mkE('E2')], hall: {}};
+  logEl.innerHTML = '';
+  log('Building ready: floors 0–9, E1 and E2 at floor 0.', 'new ElevatorController(10, 2, new NearestElevatorStrategy())');
+  render();
+}
+document.getElementById('elStep').addEventListener('click', () => { tick(); render(); });
+document.getElementById('elAuto').addEventListener('click', e => {
+  if (auto){ stopAuto(); return; }
+  e.target.textContent = '⏸ Pause';
+  auto = setInterval(() => { tick(); render(); }, 650);
+});
+document.getElementById('elMaint').addEventListener('click', () => {
+  const e = S.els[1];
+  if (e.on && e.stops.size) log('E2 has stops left. Finish them first.', 'setMaintenance("E2", true) → hasStops()');
+  else { e.on = !e.on; log(e.on ? 'E2 back in service.' : 'E2 out of service.', `setMaintenance("E2", ${!e.on})`); }
+  render();
+});
+document.getElementById('elReset').addEventListener('click', elReset);
+elReset();
+
+/* ---------- code explorer ---------- */
+(function(){
+  const data = JSON.parse(document.getElementById('repoFiles').textContent);
+  const byPath = {}; data.files.forEach(f => byPath[f.path] = f);
+  const MAIN = data.main || 'Main.java';
+  const tree = document.getElementById('ideTree'), tabsEl = document.getElementById('ideTabs');
+  const codeEl = document.getElementById('ideCode'), gut = document.getElementById('ideGutter');
+  const title = document.getElementById('ideTitle'), badge = document.getElementById('ideBadge');
+  document.getElementById('ideCnt').textContent = data.files.length;
+  let open = [], current = null;
+  const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  // build folder tree
+  const root = {dirs: {}, files: []};
+  data.files.forEach(f => {
+    const parts = f.path.split('/'); let n = root;
+    parts.slice(0, -1).forEach(d => n = n.dirs[d] = n.dirs[d] || {dirs: {}, files: []});
+    n.files.push(f.path);
+  });
+  function render(node, parent){
+    Object.keys(node.dirs).sort().forEach(d => {
+      const row = document.createElement('button'); row.type = 'button'; row.className = 'ide-row open';
+      row.innerHTML = `<span class="car">▸</span>📁 ${d}`;
+      const kids = document.createElement('div'); kids.className = 'ide-kids';
+      row.addEventListener('click', () => { kids.hidden = !kids.hidden; row.classList.toggle('open', !kids.hidden); });
+      parent.append(row, kids); render(node.dirs[d], kids);
+    });
+    node.files.sort().forEach(p => {
+      const row = document.createElement('button'); row.type = 'button'; row.className = 'ide-row'; row.dataset.path = p;
+      row.innerHTML = `<span class="car"></span>☕ ${p.split('/').pop()}` + (p === MAIN ? '<span class="mb">MAIN</span>' : '');
+      row.title = p;
+      row.addEventListener('click', () => show(p));
+      parent.appendChild(row);
+    });
+  }
+  render(root, tree);
+
+  function show(p){
+    if (!open.includes(p)) open.push(p);
+    current = p;
+    const f = byPath[p], code = f.code.replace(/\n$/, '');
+    codeEl.innerHTML = window.Prism ? Prism.highlight(code, Prism.languages.java, 'java') : esc(code);
+    gut.textContent = code.split('\n').map((_, i) => i + 1).join('\n');
+    document.getElementById('ideScroll').scrollTop = 0;
+    title.textContent = p.split('/').pop(); badge.hidden = p !== MAIN;
+    tree.querySelectorAll('.ide-row[data-path]').forEach(r => r.classList.toggle('on', r.dataset.path === p));
+    tabsEl.innerHTML = '';
+    open.forEach(q => {
+      const t = document.createElement('button'); t.type = 'button'; t.className = 'ide-tab' + (q === p ? ' on' : '');
+      t.innerHTML = `☕ ${q.split('/').pop()} <span class="x" title="Close">✕</span>`;
+      t.addEventListener('click', e => {
+        if (e.target.classList.contains('x')){
+          open = open.filter(x => x !== q);
+          if (!open.length) open = [MAIN];
+          show(q === current ? open[open.length - 1] : current);
+        } else show(q);
+      });
+      tabsEl.appendChild(t);
+    });
+  }
+  show(MAIN);
+
+  document.getElementById('ideCopy').addEventListener('click', e => {
+    navigator.clipboard && navigator.clipboard.writeText(byPath[current].code).then(() => { e.target.textContent = '✓'; setTimeout(() => e.target.textContent = '⧉', 1200); });
+  });
+  document.getElementById('ideFs').addEventListener('click', () => {
+    const ide = document.getElementById('ide');
+    if (document.fullscreenElement) document.exitFullscreen(); else ide.requestFullscreen && ide.requestFullscreen();
+  });
+  const outBox = document.getElementById('ideOut'), outPre = document.getElementById('ideOutPre'), outTab = document.getElementById('ideOutTab');
+  function toggleOut(force){ outBox.hidden = force === undefined ? !outBox.hidden : !force; outTab.classList.toggle('on', !outBox.hidden); }
+  outTab.addEventListener('click', () => { if (!outPre.textContent) outPre.textContent = data.output; toggleOut(); });
+  let timer = null;
+  document.getElementById('ideRun').addEventListener('click', () => {
+    clearInterval(timer); toggleOut(true);
+    const lines = data.output.split('\n'); let i = 0; outPre.textContent = '';
+    timer = setInterval(() => {
+      outPre.textContent += lines.slice(i, i + 12).join('\n') + '\n'; i += 12;
+      outPre.scrollTop = outPre.scrollHeight;
+      if (i >= lines.length) clearInterval(timer);
+    }, 30);
+  });
+})();
+
+/* ---------- flip cards ---------- */
+const fcs = [...document.querySelectorAll('.fc')];
+fcs.forEach(c => c.addEventListener('click', () => c.classList.toggle('open')));
+document.getElementById('fcAll').addEventListener('click', e => {
+  const show = fcs.some(c => !c.classList.contains('open'));
+  fcs.forEach(c => c.classList.toggle('open', show));
+  e.target.textContent = show ? 'Hide all answers' : 'Show all answers';
+});
+
+})();
+</script>
+</body>
+</html>
